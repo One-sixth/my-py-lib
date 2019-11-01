@@ -1,5 +1,6 @@
 # 图像处理
 
+from typing import Iterable
 import imageio
 import numpy as np
 import os
@@ -18,16 +19,20 @@ def show_image(img):
     cv2.waitKey(0)
 
 
-def pad_picture(img, width, height, interpolation=cv2.INTER_NEAREST):
+def pad_picture(img, width, height, interpolation=cv2.INTER_NEAREST, fill_value=0.):
     """
     padded picture to specified shape, then return this and padded mask
     :param img: input numpy array
     :param width: output image width
     :param height: output image height
     :param interpolation: control img interpolation
+    :param fill_value: control background fill value
     :return: output numpy array
     """
-    s_height, s_width, s_depth = img.shape
+    s_height, s_width = img.shape[:2]
+    new_shape = [height, width]
+    if len(img.shape) > 2:
+        new_shape += [img.shape[2]]
     # ratio = s_width / s_height
     width_prop = width / s_width
     height_prop = height / s_height
@@ -35,9 +40,30 @@ def pad_picture(img, width, height, interpolation=cv2.INTER_NEAREST):
     img = cv2.resize(img, (int(s_width * min_prop), int(s_height * min_prop)), interpolation=interpolation)
     img_start_x = width / 2 - s_width * min_prop / 2
     img_start_y = height / 2 - s_height * min_prop / 2
-    new_img = np.zeros((height, width, s_depth), np.float32)
+    if isinstance(fill_value, Iterable):
+        new_img = np.zeros(new_shape, dtype=img.dtype)
+        new_img[:, :] = np.asarray(fill_value)
+    else:
+        new_img = np.full(new_shape, fill_value, img.dtype)
     new_img[int(img_start_y):int(img_start_y)+img.shape[0], int(img_start_x):int(img_start_x)+img.shape[1]] = img
     return new_img
+
+
+def center_pad(im, target_hw, fill_value=0):
+    pad_h = target_hw[0] - im.shape[0]
+    pad_w = target_hw[1] - im.shape[1]
+    pad_t = pad_h // 2
+    pad_b = pad_h - pad_t
+    pad_l = pad_w // 2
+    pad_r = pad_w - pad_l
+    if pad_h < 0:
+        pad_t = pad_b = 0
+    if pad_w < 0:
+        pad_l = pad_r = 0
+    if len(im.shape) > 2 and not isinstance(fill_value, Iterable):
+        fill_value = [fill_value] * im.shape[2]
+    im = cv2.copyMakeBorder(im, pad_t, pad_b, pad_l, pad_r, cv2.BORDER_CONSTANT, value=fill_value)
+    return im
 
 
 def crop_picture(img, width, height):
@@ -187,6 +213,23 @@ def draw_boxes_and_labels_to_image(image, classes, coords, scores=None, classes_
     return image
 
 
+# def extract_2d_patches_with_half_step(im, patch_hw, need_center_pad=False):
+#     '''
+#     :param im:
+#     :param patch_hw:
+#     :return:
+#     '''
+#     assert im.shape[0] % patch_hw[0] == 0 and im.shape[1] % patch_hw[1] == 0
+#     half_step_h = patch_hw[0] // 2
+#     half_step_w = patch_hw[1] // 2
+#     im_patches = []
+#     for half_h in range(im.shape[0] // half_step_h - 1):
+#         for half_w in range(im.shape[1] // half_step_w - 1):
+#             im_patches.append(im[half_h*half_step_h: half_h*half_step_h+patch_hw[0],
+#                                  half_w*half_step_w: half_w*half_step_w+patch_hw[1]])
+#     return np.asarray(im_patches)
+
+
 def test():
     mod_dir = os.path.dirname(__file__)
 
@@ -196,7 +239,14 @@ def test():
     new_img = pad_picture(im, 1024, 700)
     show_image(np.asarray(new_img, np.uint8))
 
-    new_img = pad_picture(im, 700, 1024)
+    new_img = pad_picture(im, 700, 1024, fill_value=[255, 255, 255, 0])
+    show_image(np.asarray(new_img, np.uint8))
+
+    # test center_pad
+    new_img = center_pad(im, [700, 700])
+    show_image(np.asarray(new_img, np.uint8))
+
+    new_img = center_pad(im, [700, 700], fill_value=[128, 128, 128])
     show_image(np.asarray(new_img, np.uint8))
 
     # test crop_picture
