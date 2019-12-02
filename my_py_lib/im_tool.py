@@ -37,7 +37,10 @@ def pad_picture(img, width, height, interpolation=cv2.INTER_NEAREST, fill_value=
     width_prop = width / s_width
     height_prop = height / s_height
     min_prop = min(width_prop, height_prop)
-    img = cv2.resize(img, (int(s_width * min_prop), int(s_height * min_prop)), interpolation=interpolation)
+    img2 = cv2.resize(img, (int(s_width * min_prop), int(s_height * min_prop)), interpolation=interpolation)
+    if img2.ndim != img.ndim:
+        img2 = img2[..., None]
+    img = img2
     img_start_x = width / 2 - s_width * min_prop / 2
     img_start_y = height / 2 - s_height * min_prop / 2
     if isinstance(fill_value, Iterable):
