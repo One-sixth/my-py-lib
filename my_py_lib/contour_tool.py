@@ -2,17 +2,24 @@
 opencv 的单个轮廓格式为 [N, 1, xy]
 我的单个轮廓格式为 [N, yx]
 
-下面所有函数，除了轮廓格式转换函数，都是用我的轮廓格式输入和输出
+下面所有函数，除了轮廓格式转换函数和部分函数，都是用我的轮廓格式输入和输出
+函数名以shapely开头的，需要输入polygon格式
 
-可以支持浮点数了，现在使用shapely库用作轮廓运算
+注意，下面函数需要的坐标要求为整数，不支持浮点数运算
+因为下面一些计算需要画图，浮点数无法画图。
+
+现在，可以支持浮点数了，现在使用shapely库用作轮廓运算
+
+优先使用opencv的函数处理，opencv没有的才使用shapely，因为opencv函数的速度比shapely快
 
 '''
 
 import cv2
 import numpy as np
-from typing import Iterable
+from typing import Iterable, List
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
+# from list_tool import list_multi_get_with_ids, list_multi_get_with_bool
 
 
 def check_and_tr_umat(mat):
@@ -44,6 +51,50 @@ def tr_my_to_cv_contours(my_contours):
     '''
     out_contours = [c[:, None, ::-1] for c in my_contours]
     return out_contours
+
+
+def tr_my_to_polygon(my_contours):
+    '''
+    轮廓格式转换，转换我的格式到polygon
+    :param my_contours:
+    :return:
+    '''
+    polygons = []
+    for c in my_contours:
+        p = Polygon(c[:, ::-1])
+        p = p if p.is_valid else p.buffer(0)
+        polygons.append(p)
+    return polygons
+
+
+def tr_polygons_to_my(polygons: List[Polygon], dtype=np.float32):
+    '''
+    转换shapely的多边形到我的格式
+    :param polygons:
+    :param dtype: 输出数据类型
+    :return:
+    '''
+    my_contours = []
+    for poly in polygons:
+        x, y = poly.exterior.xy
+        c = np.array(list(zip(y, x)), dtype)
+        my_contours.append(c)
+    return my_contours
+
+
+def tr_polygons_to_cv(polygons: List[Polygon], dtype=np.float32):
+    '''
+    转换shapely的多边形到opencv格式
+    :param polygons:
+    :param dtype:   输出数据类型
+    :return:
+    '''
+    cv_contours = []
+    for poly in polygons:
+        x, y = poly.exterior.xy
+        c = np.array(list(zip(x, y)), dtype)[:, None]
+        cv_contours.append(c)
+    return cv_contours
 
 
 def calc_bbox_with_contour(contour):
@@ -92,26 +143,37 @@ def resize_contours(contours, scale_hw_factor=1.0):
     return out
 
 
-def calc_contour_area(contour):
+def calc_contour_area(contour: np.ndarray):
     '''
     求轮廓的面积
     :param contour: 输入一个轮廓
     :return:
     '''
-    contour = Polygon(contour[:, ::-1])
-    return contour.area
+    area = cv2.contourArea(tr_my_to_cv_contours([contour])[0])
+    return area
 
 
 def calc_convex_contours(coutours):
     '''
     计算一组轮廓的凸壳轮廓，很多时候可以加速。
-    :param coutours:
-    :return:
+    :param coutours: 一组轮廓
+    :return: 返回一组自身的凸壳轮廓
     '''
     coutours = tr_my_to_cv_contours(coutours)
     new_coutours = [cv2.convexHull(con) for con in coutours]
     new_coutours = tr_cv_to_my_contours(new_coutours)
     return new_coutours
+
+
+def shapely_calc_distance_contour(polygon1: Polygon, polygon2: Polygon):
+    '''
+    求俩个轮廓的最小距离，原型
+    :param polygon1: 多边形1
+    :param polygon2: 多边形2
+    :return: 轮廓面积
+    '''
+    l = polygon1.distance(polygon2)
+    return l
 
 
 # def calc_iou_with_two_contours(contour1, contour2, max_test_area_hw=(512, 512)):
@@ -152,10 +214,16 @@ def calc_convex_contours(coutours):
 #     return iou
 
 
-def calc_iou_with_two_contours_fast(contour1, contour2):
-    c1 = Polygon(contour1[..., ::-1])
-    c2 = Polygon(contour2[..., ::-1])
-    if c1.distance(c2):
+def shapely_calc_iou_with_two_contours(contour1, contour2):
+    '''
+    计算俩个轮廓的IOU，原型
+    :param contour1: polygon多边形1
+    :param contour2: polygon多边形1
+    :return:    IOU分数
+    '''
+    c1 = contour1
+    c2 = contour2
+    if not c1.intersects(c2):
         return 0.
     area1 = c1.area
     area2 = c2.area
@@ -164,7 +232,16 @@ def calc_iou_with_two_contours_fast(contour1, contour2):
     return iou
 
 
-calc_iou_with_two_contours = calc_iou_with_two_contours_fast
+def calc_iou_with_two_contours(contour1, contour2):
+    '''
+    计算两个轮廓的IOU
+    :param contour1: 轮廓1
+    :param contour2: 轮廓2
+    :return:
+    '''
+    c1, c2 = tr_my_to_polygon([contour1, contour2])
+    iou = shapely_calc_iou_with_two_contours(c1, c2)
+    return iou
 
 
 def draw_contours(im, contours, color, thickness=2):
@@ -188,25 +265,42 @@ def draw_contours(im, contours, color, thickness=2):
     return im
 
 
-def calc_one_contour_with_multi_contours_iou(c1, batch_c):
+def shapely_calc_one_contour_with_multi_contours_distance(c1: Polygon, batch_c: Iterable[Polygon]):
     '''
-    求一个轮廓和一组轮廓的IOU分数
+    求一个轮廓和一组轮廓的IOU分数，原型
     :param c1:
     :param batch_c:
     :return:
     '''
     ious = np.zeros([len(batch_c)], np.float32)
-    c1 = Polygon(c1[:, ::-1])
     for i, c2 in enumerate(batch_c):
-        c2 = Polygon(c2[:, ::-1])
-        if c1.distance(c2):
-            ious[i] = 0.
-        else:
-            area1 = c1.area
-            area2 = c2.area
-            inter_area = c1.intersection(c2).area
-            iou = inter_area / (area1 + area2 - inter_area + 1e-8)
-            ious[i] = iou
+        ious[i] = c1.distance(c2)
+    return ious
+
+
+def shapely_calc_one_contour_with_multi_contours_iou(c1: Polygon, batch_c: Iterable[Polygon]):
+    '''
+    求一个轮廓和一组轮廓的IOU分数，原型
+    :param c1:
+    :param batch_c:
+    :return:
+    '''
+    ious = np.zeros([len(batch_c)], np.float32)
+    for i, c2 in enumerate(batch_c):
+        ious[i] = shapely_calc_iou_with_two_contours(c1, c2)
+    return ious
+
+
+def calc_one_contour_with_multi_contours_iou(c1, batch_c):
+    '''
+    求一个轮廓和一组轮廓的IOU分数，包装
+    :param c1:
+    :param batch_c:
+    :return:
+    '''
+    c1 = tr_my_to_polygon([c1])[0]
+    batch_c = tr_my_to_polygon(batch_c)
+    ious = shapely_calc_one_contour_with_multi_contours_iou(c1, batch_c)
     return ious
 
 
@@ -230,22 +324,95 @@ def fusion_im_contours(im, contours, classes, class_to_color_map, copy=True):
     return im
 
 
-def merge_contours(contours, auto_simple=True):
+def shapely_merge_to_single_contours(polygons: List[Polygon]):
     '''
-    合并俩个轮廓
-    :param contours: 多个轮廓
-    :return:
+    合并多个轮廓到一个轮廓，以第一个轮廓为主，不以第一个轮廓相交的其他轮廓将会被忽略，原型
+    :param polygons: 多个多边形，其中第一个为需要融合的主体，后面的如果与第一个不相交，则会忽略
+    :return: 已合并的轮廓
     '''
-    ps = [Polygon(c[:, ::-1]) for c in contours]
+    ps = list(polygons)
+    # 逆序删除，避免问题
+    # range不能逆序，需要先转换为list
     for i in list(range(1, len(ps)))[::-1]:
-        if ps[0].distance(ps[i]):
+        if not ps[0].intersects(ps[i]):
             del ps[i]
     p = unary_union(ps)
-    x, y = p.exterior.xy
-    c = np.array(list(zip(y, x)), contours[0].dtype)
+    return p
+
+
+def merge_to_single_contours(contours, auto_simple=True):
+    '''
+    合并多个轮廓到一个轮廓，以第一个轮廓为主，不以第一个轮廓相交的其他轮廓将会被忽略
+    :param contours: 多个轮廓
+    :param auto_simple: 是否自动优化生成的轮廓
+    :return: 一个轮廓
+    '''
+    ps = tr_my_to_polygon(contours)
+    p = shapely_merge_to_single_contours(ps)
+    c = tr_polygons_to_my([p], contours[0].dtype)[0]
     if auto_simple:
         c = simple_contours([c], epsilon=0)[0]
     return c
+
+
+# def merge_multi_contours_sort_by_area(contours1):
+#     '''
+#     轮廓后处理，方法：按轮廓面积排序，以感染的方式融合其他相交的轮廓。
+#     简而言之，融合相交的轮廓，分类取面积最大的轮廓类别。
+#     :param contours:    多个轮廓，要求为我的格式
+#     :return:
+#     '''
+#     polygons = tr_my_to_polygon(contours1)
+#
+#     cons_area = [p.area for p in polygons]
+#     sorted_ids = np.argsort(cons_area)[::-1]
+#
+#     open_ids = list(sorted_ids)             # 尚未处理的轮廓ID
+#     close_ids = []                          # 独立的轮廓ID
+#     remove_ids = []                         # 被移除的轮廓ID
+#
+#     while len(open_ids) > 0:
+#         cid = open_ids.pop(0)
+#         close_ids.append(cid)
+#
+#         poly = polygons[cid]
+#         l1 = shapely_calc_one_contour_with_multi_contours_distance(poly, list_multi_get_with_ids(polygons, open_ids))
+#         wait_to_merge_ids = list_multi_get_with_bool(open_ids, l1 > 0)      # 等待融合的ID
+#         if len(wait_to_merge_ids) > 0:
+#             for i in wait_to_merge_ids:
+#                 open_ids.remove(i)
+#                 remove_ids.append(i)
+#             del close_ids[-1]
+#             open_ids.insert(0, cid)
+#             wait_to_merge_con = list_multi_get_with_ids(polygons, wait_to_merge_ids)
+#             wait_to_merge_con.insert(0, poly)
+#             polygons[cid] = shapely_merge_to_single_contours(wait_to_merge_con)
+#
+#     polygons = list_multi_get_with_ids(polygons, close_ids)
+#     contours = tr_polygons_to_my(polygons, np.float32)
+#
+#     return contours, close_ids
+
+
+def merge_multi_contours_sort_by_area(contours):
+    '''
+    轮廓后处理2，方法：直接合并所有相交的轮廓，计算合并后的轮廓与原始轮廓的IOU，取最大IOU的原始轮廓ID
+    :param contours: 多个轮廓，要求为我的格式
+    :return:
+    '''
+    polygons = tr_my_to_polygon(contours)
+
+    mps = unary_union(polygons)
+    if isinstance(mps, Polygon):
+        mps = [mps]
+
+    ids = []
+    for mp in mps:
+        ious = shapely_calc_one_contour_with_multi_contours_iou(mp, polygons)
+        ids.append(np.argmax(ious))
+
+    cs = tr_polygons_to_my(mps)
+    return cs, ids
 
 
 if __name__ == '__main__':
@@ -255,7 +422,7 @@ if __name__ == '__main__':
     print(calc_contour_area(c1))
     print(calc_iou_with_two_contours(c1, c2))
     print(calc_one_contour_with_multi_contours_iou(c1, [c1,c2]))
-    print(merge_contours([c1, c2]))
+    print(merge_to_single_contours([c1, c2]))
     im = np.zeros([512, 512, 3], np.uint8)
     im2 = draw_contours(im, [c1, c2], [0, 0, 255], 2)
     im3 = fusion_im_contours(im, [c1, c2], [0, 1], {0: [255, 0, 0], 1: [0, 255, 0]})
