@@ -6,6 +6,74 @@ import numpy as np
 import os
 import cv2
 from PIL import Image, ImageDraw, ImageFont
+from typing import Union, Tuple, Iterable
+
+
+def check_and_tr_umat(mat):
+    '''
+    如果输入了cv.UMAT，将会自动转换为 np.ndarray
+    :param mat:
+    :return:
+    '''
+    if isinstance(mat, cv2.UMat):
+        mat = mat.get()
+    return mat
+
+
+def check_and_tr_color_to_tuple(color_value: Union[int, float, Iterable], im_shape: Tuple[int]):
+    '''
+    如果输入了颜色标量，将会根据原图维度自动转换为合适的颜色元组
+    例子:输入 color_value=50           im_shape=(100, 200, 3)，输出 (50, 50, 50)
+         输入 color_value=50           im_shape=(100, 200, )，输出 50
+         输入 color_value=(50,)        im_shape=(100, 200, 3)，报错
+         输入 color_value=(50, 50, 50) im_shape=(100, 200, 3)，输出 (50, 50, 50)
+         输入 color_value=(50, 50, 50) im_shape=(100, 200, )，报错
+    :param color_value:
+    :param im_shape:
+    :return:
+    '''
+    assert len(im_shape) in {2, 3}
+    if isinstance(color_value, Iterable):
+        if len(im_shape) == 2:
+            assert len(color_value) == 1
+        else:
+            # 不进行额外处理，直接抛出错误
+            assert im_shape[-1] == len(color_value)
+    else:
+        if len(im_shape) != 2:
+            color_value = (color_value) * im_shape[-1]
+
+    return color_value
+
+
+def ensure_image_has_3dim(im):
+    '''
+    确保图像有三个维度，opencv的函数经常会把灰度图像的最后的一个维度去掉
+    :param im:
+    :return:
+    '''
+    if im.ndim != 3:
+        im = im[:, :, None]
+    return im
+
+
+def ensure_image_has_same_ndim(im: np.ndarray, ori_im: np.ndarray):
+    '''
+    确保图像与原图有相同的维度，opencv的函数经常会把灰度图像的最后的一个维度去掉
+    :param im:      待处理的图像
+    :param ori_im:  原图
+    :return:
+    '''
+    if ori_im.ndim > im.ndim:
+        # 比原图少
+        assert im.ndim == 2
+        im = im[:, :, None]
+    elif ori_im.ndim < im.ndim:
+        # 比原图多
+        assert im.ndim == 3 and im.shape[-1] == 1
+        im = im[:, :, 0]
+    assert im.ndim == ori_im.ndim
+    return im
 
 
 def show_image(img):
@@ -19,9 +87,9 @@ def show_image(img):
     cv2.waitKey(0)
 
 
-def pad_picture(img, width, height, interpolation=cv2.INTER_NEAREST, fill_value=0.):
+def pad_picture(img, width, height, interpolation=cv2.INTER_NEAREST, fill_value: Union[int, float, Tuple]=0.):
     """
-    padded picture to specified shape, then return this and padded mask
+    padded picture to specified shape
     :param img: input numpy array
     :param width: output image width
     :param height: output image height
@@ -38,21 +106,25 @@ def pad_picture(img, width, height, interpolation=cv2.INTER_NEAREST, fill_value=
     height_prop = height / s_height
     min_prop = min(width_prop, height_prop)
     img2 = cv2.resize(img, (int(s_width * min_prop), int(s_height * min_prop)), interpolation=interpolation)
-    if img2.ndim != img.ndim:
-        img2 = img2[..., None]
+    img2 = ensure_image_has_same_ndim(img2, img)
     img = img2
     img_start_x = width / 2 - s_width * min_prop / 2
     img_start_y = height / 2 - s_height * min_prop / 2
-    if isinstance(fill_value, Iterable):
-        new_img = np.zeros(new_shape, dtype=img.dtype)
-        new_img[:, :] = np.asarray(fill_value)
-    else:
-        new_img = np.full(new_shape, fill_value, img.dtype)
+    fill_value = check_and_tr_color_to_tuple(fill_value, new_shape)
+    new_img = np.empty(new_shape, dtype=img.dtype)
+    new_img[:, :] = np.asarray(fill_value)
     new_img[int(img_start_y):int(img_start_y)+img.shape[0], int(img_start_x):int(img_start_x)+img.shape[1]] = img
     return new_img
 
 
-def center_pad(im, target_hw, fill_value=0):
+def center_pad(im, target_hw, fill_value: Union[int, float, Tuple]=0):
+    '''
+    中间填充，注意仅当原图小于目标宽高的时候才会进行填充，并且不会将生成的图缩放到目标宽高
+    :param im:
+    :param target_hw:
+    :param fill_value:
+    :return:
+    '''
     pad_h = target_hw[0] - im.shape[0]
     pad_w = target_hw[1] - im.shape[1]
     pad_t = pad_h // 2
@@ -63,8 +135,7 @@ def center_pad(im, target_hw, fill_value=0):
         pad_t = pad_b = 0
     if pad_w < 0:
         pad_l = pad_r = 0
-    if len(im.shape) > 2 and not isinstance(fill_value, Iterable):
-        fill_value = [fill_value] * im.shape[2]
+    fill_value = check_and_tr_color_to_tuple(fill_value, im.shape)
     im = cv2.copyMakeBorder(im, pad_t, pad_b, pad_l, pad_r, cv2.BORDER_CONSTANT, value=fill_value)
     return im
 
@@ -92,6 +163,7 @@ def crop_picture(img, width, height):
     return img
 
 
+# put_text需要指定字体，设定默认字体
 _default_font_path = os.path.join(os.path.dirname(__file__), 'SourceHanSansCN-Regular.otf')
 
 def put_text(img, text, pos, font_size=20, font_color=(0, 0, 255), bg_color=None, font_type=None):
@@ -171,7 +243,7 @@ def draw_keypoints_and_labels_to_image_coco(image, keypoints, skeleton, keypoint
     return image
 
 
-def draw_boxes_and_labels_to_image(image, classes, coords, scores=None, classes_list=None, classes_colors=None, font_color=[0, 0, 255]):
+def draw_boxes_and_labels_to_image(image, classes, coords, scores=None, classes_list=None, classes_colors=None, font_color=(0, 0, 255)):
     """
     Draw bboxes and class labels on image. Return or save the image with bboxes
     Parameters
@@ -249,7 +321,7 @@ def test():
     new_img = center_pad(im, [700, 700])
     show_image(np.asarray(new_img, np.uint8))
 
-    new_img = center_pad(im, [700, 700], fill_value=[128, 128, 128])
+    new_img = center_pad(im, [700, 700], fill_value=[128, 128, 128, 0])
     show_image(np.asarray(new_img, np.uint8))
 
     # test crop_picture

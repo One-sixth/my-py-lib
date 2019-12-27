@@ -1,3 +1,18 @@
+'''
+坐标格式转换工具
+
+坐标格式解析
+
+x1y1 or y1x1
+    —————————————————————————
+    |                       |
+    |                       | h
+    |                       |
+    —————————————————————————
+               w       x2y2 or y2x2
+'''
+
+
 import numpy as np
 
 
@@ -9,8 +24,11 @@ def xywh2yxhw(coord_or_coords):
     return yxhw
 
 
-def yxhw2xywh(coord_or_coords):
-    return xywh2yxhw(coord_or_coords)
+yxhw2xywh = xywh2yxhw
+x1y1x2y2_to_y1x1y2x2 = xywh2yxhw
+y1x1y2x2_to_x1y1x2y2 = xywh2yxhw
+x1y1wh_to_y1x1hw = xywh2yxhw
+y1x1hw_to_x1y1wh = xywh2yxhw
 
 
 def coord_pixelunit_to_scale(coord_or_coords, shape):
