@@ -73,3 +73,27 @@ class ImageOverScanWrapper:
         crop_r = new_im[top: new_im.shape[0] - bottom, left: new_im.shape[1] - right]
 
         pr[:] = crop_r
+
+    @property
+    def data(self):
+        return self.im
+
+    @property
+    def shape(self):
+        return self.im.shape
+
+    @property
+    def ndim(self):
+        return self.im.ndim
+
+    @property
+    def size(self):
+        return self.im.size
+    
+    @property
+    def dtype(self):
+        return self.im.dtype
+
+    @property
+    def itemsize(self):
+        return self.im.itemsize
