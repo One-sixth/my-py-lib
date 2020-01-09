@@ -19,6 +19,10 @@ import numpy as np
 from typing import Iterable, List
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
+try:
+    from im_tool import ensure_image_has_same_ndim
+except ModuleNotFoundError:
+    from .im_tool import ensure_image_has_same_ndim
 # from list_tool import list_multi_get_with_ids, list_multi_get_with_bool
 
 
@@ -253,6 +257,7 @@ def draw_contours(im, contours, color, thickness=2):
     :param thickness: 绘制轮廓边界大小
     :return:
     '''
+    ori_im = im
     if isinstance(color, Iterable):
         color = tuple(color)
     else:
@@ -262,6 +267,7 @@ def draw_contours(im, contours, color, thickness=2):
     contours = tr_my_to_cv_contours(contours)
     im = cv2.drawContours(im, contours, -1, color, thickness)
     im = check_and_tr_umat(im)
+    im = ensure_image_has_same_ndim(im, ori_im)
     return im
 
 

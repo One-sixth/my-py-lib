@@ -15,7 +15,7 @@ class ImageOverScanWrapper:
     '''
     图像溢出范围采样类，用于使坐标超出图像边缘时仍然能正常工作
     '''
-    def __init__(self, im):
+    def __init__(self, im: np.ndarray):
         assert im.ndim == 3, 'Only support ndim=3 picture, if gray image please add a dim as last.'
         self.im = im
 
