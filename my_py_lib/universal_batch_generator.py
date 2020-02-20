@@ -14,7 +14,8 @@ def universal_batch_generator(g, batch_size):
     for items in g:
         assert len(items) == len(batch_bulk)
         if len(batch_bulk[0]) == batch_size:
-            yield batch_bulk
+            # 注意线程安全，所以需要返回 batch_bulk 的浅复制副本
+            yield tuple(batch_bulk)
             for i in range(len(batch_bulk)):
                 batch_bulk[i] = []
 
@@ -22,7 +23,7 @@ def universal_batch_generator(g, batch_size):
             bulk.append(i)
 
     if len(batch_bulk[0]) > 0:
-        yield batch_bulk
+        yield tuple(batch_bulk)
         for i in range(len(batch_bulk)):
             batch_bulk[i] = []
 

@@ -15,6 +15,7 @@ opencv 的单个轮廓格式为 [N, 1, xy]
 '''
 
 import cv2
+assert cv2.__version__ >= '4.0'
 import numpy as np
 from typing import Iterable, List
 from shapely.geometry import Polygon
@@ -101,6 +102,60 @@ def tr_polygons_to_cv(polygons: List[Polygon], dtype=np.float32):
     return cv_contours
 
 
+def find_contours(im, mode, method):
+    '''
+    cv2.findContours 的包装，区别是会自动转换cv2的轮廓格式到我的格式，和会自动删除轮廓点少于3的无效轮廓
+    :param im:
+    :param mode: 轮廓查找模式，例如 cv2.RETR_EXTERNAL cv2.RETR_TREE, cv2.RETR_LIST
+    :param method: 轮廓优化方法，例如 cv2.CHAIN_APPROX_SIMPLE cv2.CHAIN_APPROX_NONE
+    :return:
+    '''
+    # 简化轮廓，目前用于缩放后去除重叠点，并不进一步简化
+    # epsilon=0 代表只去除重叠点
+    contours, _ = cv2.findContours(im, mode=mode, method=method)
+    # 删除轮廓点少于3的无效轮廓
+    valid_contours = []
+    for c in contours:
+        if len(c) >= 3:
+            valid_contours.append(c)
+    valid_contours = tr_cv_to_my_contours(valid_contours)
+    return valid_contours
+
+
+def offset_contours(contours, ori_yx=(0, 0), new_ori_yx=(0, 0)):
+    '''
+    重定位轮廓位置
+    :param contours:    多个轮廓，要求为我的格式
+    :param ori_yx:      旧轮廓的起点
+    :param new_ori_yx:  新起点
+    :return:
+    '''
+    if len(contours) == 0:
+        return contours
+    new_contours = []
+    ori_yx = np.array(ori_yx, dtype=contours[0].dtype).reshape(1, 2)
+    new_ori_yx = np.array(new_ori_yx, dtype=contours[0].dtype).reshape(1, 2)
+    for c in contours:
+        c = c - ori_yx + new_ori_yx
+        new_contours.append(c)
+    return new_contours
+
+
+def make_bbox_to_contour(start_yx=(0, 0), bbox_hw=(1, 1)):
+    '''
+    将包围框转换为轮廓
+    :param bbox: np.ndarray []
+    :return:
+    '''
+    p1 = [start_yx[0]               , start_yx[1]             ]
+    p2 = [start_yx[0]               , start_yx[1] + bbox_hw[1]]
+    p3 = [start_yx[0] + bbox_hw[0]  , start_yx[1] + bbox_hw[1]]
+    p4 = [start_yx[0] + bbox_hw[0]  , start_yx[1]             ]
+    contours = [p1, p2, p3, p4]
+    contours = np.array(contours)
+    return contours
+
+
 def calc_bbox_with_contour(contour):
     '''
     求轮廓的外接包围框
@@ -133,17 +188,17 @@ def simple_contours(contours, epsilon=0):
     return out
 
 
-def resize_contours(contours, scale_hw_factor=1.0):
+def resize_contours(contours, scale_factor_hw=1.0):
     '''
     缩放轮廓
     :param contours: 输入一组轮廓
-    :param scale_hw_factor: 缩放倍数
+    :param scale_factor_hw: 缩放倍数
     :return:
     '''
-    if isinstance(scale_hw_factor, Iterable):
-        scale_hw_factor = np.array(scale_hw_factor)[None,]
+    if isinstance(scale_factor_hw, Iterable):
+        scale_factor_hw = np.array(scale_factor_hw)[None,]
     # 以左上角为原点进行缩放轮廓
-    out = [(c * scale_hw_factor).astype(contours[0].dtype) for c in contours]
+    out = [(c * scale_factor_hw).astype(contours[0].dtype) for c in contours]
     return out
 
 
@@ -265,13 +320,15 @@ def draw_contours(im, contours, color, thickness=2):
         if im.ndim == 3:
             color = color * im.shape[-1]
     contours = tr_my_to_cv_contours(contours)
+    # 确保为整数
+    contours = [c.astype(np.int32) for c in contours]
     im = cv2.drawContours(im, contours, -1, color, thickness)
     im = check_and_tr_umat(im)
     im = ensure_image_has_same_ndim(im, ori_im)
     return im
 
 
-def shapely_calc_one_contour_with_multi_contours_distance(c1: Polygon, batch_c: Iterable[Polygon]):
+def shapely_calc_distance_with_contours_1toN(c1: Polygon, batch_c: Iterable[Polygon]):
     '''
     求一个轮廓和一组轮廓的IOU分数，原型
     :param c1:
@@ -284,7 +341,7 @@ def shapely_calc_one_contour_with_multi_contours_distance(c1: Polygon, batch_c: 
     return ious
 
 
-def shapely_calc_one_contour_with_multi_contours_iou(c1: Polygon, batch_c: Iterable[Polygon]):
+def shapely_calc_iou_with_contours_1toN(c1: Polygon, batch_c: Iterable[Polygon]):
     '''
     求一个轮廓和一组轮廓的IOU分数，原型
     :param c1:
@@ -297,7 +354,7 @@ def shapely_calc_one_contour_with_multi_contours_iou(c1: Polygon, batch_c: Itera
     return ious
 
 
-def calc_one_contour_with_multi_contours_iou(c1, batch_c):
+def calc_iou_with_contours_1toN(c1, batch_c):
     '''
     求一个轮廓和一组轮廓的IOU分数，包装
     :param c1:
@@ -306,7 +363,7 @@ def calc_one_contour_with_multi_contours_iou(c1, batch_c):
     '''
     c1 = tr_my_to_polygon([c1])[0]
     batch_c = tr_my_to_polygon(batch_c)
-    ious = shapely_calc_one_contour_with_multi_contours_iou(c1, batch_c)
+    ious = shapely_calc_iou_with_contours_1toN(c1, batch_c)
     return ious
 
 
@@ -400,23 +457,43 @@ def merge_to_single_contours(contours, auto_simple=True):
 #     return contours, close_ids
 
 
+def shapely_merge_multi_contours(polygons: List[Polygon]):
+    '''
+    直接合并多个轮廓
+    :param polygons: 多个轮廓，要求为shapely的格式
+    :return:
+    '''
+    mps = unary_union(polygons)
+    if isinstance(mps, Polygon):
+        mps = [mps]
+    return mps
+
+
 def merge_multi_contours_sort_by_area(contours):
     '''
     轮廓后处理2，方法：直接合并所有相交的轮廓，计算合并后的轮廓与原始轮廓的IOU，取最大IOU的原始轮廓ID
     :param contours: 多个轮廓，要求为我的格式
-    :return:
+    :return: 返回合并后的剩余轮廓，和保留轮廓位于原列表时的ID
     '''
     polygons = tr_my_to_polygon(contours)
-
-    mps = unary_union(polygons)
-    if isinstance(mps, Polygon):
-        mps = [mps]
-
+    mps = shapely_merge_multi_contours(polygons)
     ids = []
     for mp in mps:
-        ious = shapely_calc_one_contour_with_multi_contours_iou(mp, polygons)
+        ious = shapely_calc_iou_with_contours_1toN(mp, polygons)
         ids.append(np.argmax(ious))
 
+    cs = tr_polygons_to_my(mps)
+    return cs, ids
+
+
+def merge_multi_contours(contours):
+    '''
+    直接合并多个轮廓
+    :param contours: 多个轮廓，要求为我的格式
+    :return: 返回合并后的剩余轮廓
+    '''
+    polygons = tr_my_to_polygon(contours)
+    mps = shapely_merge_multi_contours(polygons)
     cs = tr_polygons_to_my(mps)
     return cs, ids
 
@@ -427,7 +504,7 @@ if __name__ == '__main__':
     c2[:, 1] += 50
     print(calc_contour_area(c1))
     print(calc_iou_with_two_contours(c1, c2))
-    print(calc_one_contour_with_multi_contours_iou(c1, [c1,c2]))
+    print(calc_iou_with_contours_1toN(c1, [c1,c2]))
     print(merge_to_single_contours([c1, c2]))
     im = np.zeros([512, 512, 3], np.uint8)
     im2 = draw_contours(im, [c1, c2], [0, 0, 255], 2)
