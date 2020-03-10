@@ -18,13 +18,14 @@ import cv2
 assert cv2.__version__ >= '4.0'
 import numpy as np
 from typing import Iterable, List
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import unary_union
 try:
     from im_tool import ensure_image_has_same_ndim
+    from list_tool import list_multi_get_with_ids, list_multi_get_with_bool
 except ModuleNotFoundError:
     from .im_tool import ensure_image_has_same_ndim
-# from list_tool import list_multi_get_with_ids, list_multi_get_with_bool
+    from .list_tool import list_multi_get_with_ids, list_multi_get_with_bool
 
 
 def check_and_tr_umat(mat):
@@ -67,7 +68,15 @@ def tr_my_to_polygon(my_contours):
     polygons = []
     for c in my_contours:
         p = Polygon(c[:, ::-1])
-        p = p if p.is_valid else p.buffer(0)
+        if not p.is_valid:
+            # 如果轮廓在buffer(0)后变成了MultiPolygon，则尝试buffer(1)，如果仍然不能转换为Polygon，则将轮廓转换为凸壳，强制转换为Polygon
+            p1 = p.buffer(0)
+            if not isinstance(p1, Polygon):
+                p1 = p.buffer(1)
+            if not isinstance(p1, Polygon):
+                print('Warning! Found an abnormal contour that cannot be converted directly to Polygon, currently will be forced to convex hull to allow it to be converted to Polygon')
+                p1 = p.convex_hull
+            p = p1
         polygons.append(p)
     return polygons
 
@@ -303,13 +312,14 @@ def calc_iou_with_two_contours(contour1, contour2):
     return iou
 
 
-def draw_contours(im, contours, color, thickness=2):
+def draw_contours(im, contours, color, thickness=2, copy=False):
     '''
     绘制轮廓
     :param im:  图像
     :param contours: 多个轮廓的列表，格式为 [(n,pt_yx), (n,pt_yx)]
     :param color: 绘制的颜色
     :param thickness: 绘制轮廓边界大小
+    :param copy: 默认在原图上绘制
     :return:
     '''
     ori_im = im
@@ -322,6 +332,8 @@ def draw_contours(im, contours, color, thickness=2):
     contours = tr_my_to_cv_contours(contours)
     # 确保为整数
     contours = [c.astype(np.int32) for c in contours]
+    if copy:
+        im = im.copy()
     im = cv2.drawContours(im, contours, -1, color, thickness)
     im = check_and_tr_umat(im)
     im = ensure_image_has_same_ndim(im, ori_im)
@@ -367,6 +379,65 @@ def calc_iou_with_contours_1toN(c1, batch_c):
     return ious
 
 
+def shapely_calc_occupancy_ratio(contour1, contour2):
+    '''
+    计算轮廓1和轮廓2的相交区域与轮廓2的占比，原型
+    :param contour1: polygon多边形1
+    :param contour2: polygon多边形1
+    :return:    IOU分数
+    '''
+    c1 = contour1
+    c2 = contour2
+    if not c1.intersects(c2):
+        return 0.
+    area2 = c2.area
+    inter_area = c1.intersection(c2).area
+    ratio = inter_area / (area2 + 1e-8)
+    return ratio
+
+
+def calc_occupancy_ratio(contour1, contour2):
+    '''
+    计算轮廓1和轮廓2的相交区域与轮廓2的占比
+    :param contour1:
+    :param contour2:
+    :return:
+    '''
+    contour1, contour2 = tr_my_to_polygon([contour1, contour2])
+    ratio = shapely_calc_occupancy_ratio(contour1, contour2)
+    return ratio
+
+
+def calc_occupancy_ratio_1toN(contour1, contours):
+    '''
+    计算轮廓1与多个轮廓的相交区域与多个轮廓的占比
+    :param contour1:
+    :param contours:
+    :return:
+    '''
+    contour1 = tr_my_to_polygon([contour1])[0]
+    contours = tr_my_to_polygon(contours)
+    ratio = np.zeros([len(contours)], np.float32)
+    for i, c in enumerate(contours):
+        ratio[i] = shapely_calc_occupancy_ratio(contour1, c)
+    return ratio
+
+
+def calc_occupancy_ratio_Nto1(contours, contour1):
+    '''
+    计算多个轮廓与轮廓1的相交区域与轮廓1的占比
+    :param contours:
+    :param contour1:
+    :return:
+    '''
+    contour1 = tr_my_to_polygon([contour1])[0]
+    contours = tr_my_to_polygon(contours)
+    ratio = np.zeros([len(contours)], np.float32)
+    for i, c in enumerate(contours):
+        ratio[i] = shapely_calc_occupancy_ratio(c, contour1)
+    return ratio
+
+
 def fusion_im_contours(im, contours, classes, class_to_color_map, copy=True):
     '''
     融合原图和一组轮廓到一张图像
@@ -377,13 +448,13 @@ def fusion_im_contours(im, contours, classes, class_to_color_map, copy=True):
     :return:
     '''
     assert set(classes).issubset(set(class_to_color_map.keys()))
+    assert len(contours) == len(classes)
     if copy:
         im = im.copy()
-    contours = np.array(contours)
     clss = np.asarray(classes)
     for cls in set(clss):
-        cs = contours[clss == cls]
-        im = draw_contours(im, list(cs), class_to_color_map[cls])
+        cs = list_multi_get_with_bool(contours, clss == cls)
+        im = draw_contours(im, cs, class_to_color_map[cls])
     return im
 
 
@@ -466,6 +537,8 @@ def shapely_merge_multi_contours(polygons: List[Polygon]):
     mps = unary_union(polygons)
     if isinstance(mps, Polygon):
         mps = [mps]
+    else:
+        mps = list(mps)
     return mps
 
 
@@ -495,7 +568,41 @@ def merge_multi_contours(contours):
     polygons = tr_my_to_polygon(contours)
     mps = shapely_merge_multi_contours(polygons)
     cs = tr_polygons_to_my(mps)
-    return cs, ids
+    return cs
+
+
+def shapely_inter_contours_1toN(c1: Polygon, batch_c: List[Polygon]):
+    '''
+    计算一个轮廓与轮廓组的相交轮廓
+    :param c1:
+    :param batch_c:
+    :return:
+    '''
+    cs = []
+    for c in batch_c:
+        if c1.intersects(c):
+            inter = c1.intersection(c)
+            # 排除inter不是多边形或多个多边形的情况
+            if isinstance(inter, Polygon):
+                cs.append(inter)
+            elif isinstance(inter, MultiPolygon):
+                cs.extend(list(inter))
+    cs = shapely_merge_multi_contours(cs)
+    return cs
+
+
+def inter_contours_1toN(c1, batch_c):
+    '''
+    计算一个轮廓与轮廓组的相交轮廓
+    :param c1:
+    :param batch_c:
+    :return:
+    '''
+    c1 = tr_my_to_polygon([c1])[0]
+    batch_c = tr_my_to_polygon(batch_c)
+    cs = shapely_inter_contours_1toN(c1, batch_c)
+    cs = tr_polygons_to_my(cs)
+    return cs
 
 
 if __name__ == '__main__':
