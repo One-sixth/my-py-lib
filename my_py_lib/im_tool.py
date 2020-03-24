@@ -1,4 +1,6 @@
-# 图像处理
+'''
+图像处理辅助库，作为 scikit-image 和 opencv 辅助用，非替代
+'''
 
 from typing import Iterable
 import imageio
@@ -74,6 +76,20 @@ def ensure_image_has_same_ndim(im: np.ndarray, ori_im: np.ndarray):
         im = im[:, :, 0]
     assert im.ndim == ori_im.ndim
     return im
+
+
+def resize_image(img, target_hw, interpolation=cv2.INTER_LINEAR):
+    '''
+    cv2.resize pack function
+    :param img:
+    :param target_hw:
+    :param interpolation: for example cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_NEAREST
+    :return:
+    '''
+    out = cv2.resize(img, dsize=tuple(target_hw[::-1]), interpolation=interpolation)
+    out = check_and_tr_umat(out)
+    out = ensure_image_has_same_ndim(out, img)
+    return out
 
 
 def show_image(img):

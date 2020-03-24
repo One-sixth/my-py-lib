@@ -81,7 +81,7 @@ def tr_my_to_polygon(my_contours):
     return polygons
 
 
-def tr_polygons_to_my(polygons: List[Polygon], dtype=np.float32):
+def tr_polygons_to_my(polygons: List[Polygon], dtype: np.dtype=np.float32):
     '''
     转换shapely的多边形到我的格式
     :param polygons:
@@ -603,6 +603,42 @@ def inter_contours_1toN(c1, batch_c):
     cs = shapely_inter_contours_1toN(c1, batch_c)
     cs = tr_polygons_to_my(cs)
     return cs
+
+
+def shapely_morphology_contour(contour: Polygon, distance, resolution=16):
+    '''
+    对轮廓进行形态学操作，例如膨胀和腐蚀
+    对轮廓腐蚀操作后，可能会返回多个轮廓，也可能返回一个空轮廓，此时做好检查，并排除
+    因为可能返回多个轮廓，所以统一用list来包装
+    :param contour:                 输入轮廓
+    :param distance:                形态学操作距离
+    :param resolution:              分辨率
+    :return:
+    '''
+    out_c = c.buffer(distance=distance, resolution=resolution)
+    if isinstance(out_c, MultiPolygon):
+        out_c = list(out_c)
+    else:
+        assert isinstance(out_c, Polygon)
+        out_c = [out_c]
+    out_c = [c for c in out_c if c.exterior is not None]
+    return out_c
+
+
+def morphology_contour(contour: np.ndarray, distance, resolution=16):
+    '''
+    对轮廓进行形态学操作，例如膨胀和腐蚀
+    对轮廓腐蚀操作后，可能会返回多个轮廓
+    因为可能返回多个轮廓，所以统一用list来包装
+    :param contour:                 输入轮廓
+    :param distance:                形态学操作距离
+    :param resolution:              分辨率
+    :return:
+    '''
+    c = tr_my_to_polygon([contour])[0]
+    out_cs = shapely_morphology_contour(c, distance, resolution)
+    out_cs = tr_polygons_to_my(out_cs, contour.dtype)
+    return out_cs
 
 
 if __name__ == '__main__':

@@ -28,6 +28,14 @@ def list_multi_set_with_bool(self: list, bools: Iterable, items: Iterable):
         self[i] = item
 
 
+def list_bool_to_ids(self: Iterable):
+    ids = []
+    for i, it in enumerate(self):
+        if it == True:
+            ids.append(i)
+    return ids
+
+
 if __name__ == '__main__':
     a = [1, 2, 3, 4, 5, 6]
     b = list_multi_get_with_ids(a, [0, 2, 4])
@@ -41,3 +49,6 @@ if __name__ == '__main__':
 
     list_multi_set_with_bool(a, [True, False, True, False, False, False], [1, 3])
     assert a[0] == 1 and a[2] == 3
+
+    d = list_bool_to_ids([True, False, True, False, False, False])
+    assert len(d) == 2 and d[0] == 0 and d[1] == 2
