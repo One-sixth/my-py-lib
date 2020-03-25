@@ -44,8 +44,8 @@ def calc_bbox_iou_NtoN(bboxes1: np.ndarray, bboxes2: np.ndarray):
     inter_x2 = np.minimum(bboxes1[..., 3], bboxes2[..., 3])
 
     # 计算相交区域长宽
-    inter_h = np.clip(inter_y2 - inter_y1, 0)
-    inter_w = np.clip(inter_x2 - inter_x1, 0)
+    inter_h = np.clip(inter_y2 - inter_y1, 0, None)
+    inter_w = np.clip(inter_x2 - inter_x1, 0, None)
     inter_area = inter_h * inter_w
 
     uniou_area = bboxes1_area + bboxes2_area - inter_area

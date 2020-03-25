@@ -150,22 +150,37 @@ def offset_contours(contours, ori_yx=(0, 0), new_ori_yx=(0, 0)):
     return new_contours
 
 
-def make_bbox_to_contour(start_yx=(0, 0), bbox_hw=(1, 1)):
+# def make_bbox_to_contour(start_yx=(0, 0), bbox_hw=(1, 1)):
+#     '''
+#     将包围框转换为轮廓
+#     :param bbox: np.ndarray []
+#     :return:
+#     '''
+#     p1 = [start_yx[0]               , start_yx[1]             ]
+#     p2 = [start_yx[0]               , start_yx[1] + bbox_hw[1]]
+#     p3 = [start_yx[0] + bbox_hw[0]  , start_yx[1] + bbox_hw[1]]
+#     p4 = [start_yx[0] + bbox_hw[0]  , start_yx[1]             ]
+#     contours = [p1, p2, p3, p4]
+#     contours = np.array(contours)
+#     return contours
+
+
+def make_contour_from_bbox(bbox):
     '''
     将包围框转换为轮廓
-    :param bbox: np.ndarray []
+    :param bbox: np.ndarray [y1, x1, y2, x2]
     :return:
     '''
-    p1 = [start_yx[0]               , start_yx[1]             ]
-    p2 = [start_yx[0]               , start_yx[1] + bbox_hw[1]]
-    p3 = [start_yx[0] + bbox_hw[0]  , start_yx[1] + bbox_hw[1]]
-    p4 = [start_yx[0] + bbox_hw[0]  , start_yx[1]             ]
+    p1 = [bbox[0], bbox[1]]
+    p2 = [bbox[0], bbox[3]]
+    p3 = [bbox[2], bbox[3]]
+    p4 = [bbox[2], bbox[1]]
     contours = [p1, p2, p3, p4]
     contours = np.array(contours)
     return contours
 
 
-def calc_bbox_with_contour(contour):
+def make_bbox_from_contour(contour):
     '''
     求轮廓的外接包围框
     :param contour:
@@ -615,7 +630,7 @@ def shapely_morphology_contour(contour: Polygon, distance, resolution=16):
     :param resolution:              分辨率
     :return:
     '''
-    out_c = c.buffer(distance=distance, resolution=resolution)
+    out_c = contour.buffer(distance=distance, resolution=resolution)
     if isinstance(out_c, MultiPolygon):
         out_c = list(out_c)
     else:
@@ -639,7 +654,7 @@ def morphology_contour(contour: np.ndarray, distance, resolution=16):
     out_cs = shapely_morphology_contour(c, distance, resolution)
     out_cs = tr_polygons_to_my(out_cs, contour.dtype)
     return out_cs
-
+    
 
 if __name__ == '__main__':
     c1 = np.array([[0, 0], [0, 100], [100, 100], [100, 0]], np.int)
