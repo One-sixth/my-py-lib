@@ -349,7 +349,7 @@ def draw_contours(im, contours, color, thickness=2, copy=False):
     contours = [c.astype(np.int32) for c in contours]
     if copy:
         im = im.copy()
-    im = cv2.drawContours(im, contours, -1, color, thickness)
+    im = cv2.drawContours(cv2.UMat(im), contours, -1, color, thickness)
     im = check_and_tr_umat(im)
     im = ensure_image_has_same_ndim(im, ori_im)
     return im
@@ -486,6 +486,16 @@ def shapely_merge_to_single_contours(polygons: List[Polygon]):
         if not ps[0].intersects(ps[i]):
             del ps[i]
     p = unary_union(ps)
+    if isinstance(p, MultiPolygon):
+        # 不知为何会出现这个，目前解决方式是只保留最大面积的
+        p = list(p)
+        c1 = None
+        c2 = -np.inf
+        for c in p:
+            if c.area > c2:
+                c1 = c
+                c2 = c.area
+        p = c1
     return p
 
 

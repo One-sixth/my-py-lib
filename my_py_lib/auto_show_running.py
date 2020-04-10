@@ -8,9 +8,9 @@ import threading
 import cv2
 import numpy as np
 try:
-    from im_tool import pad_picture
+    from im_tool import pad_picture, ensure_image_has_3dim
 except ModuleNotFoundError:
-    from .im_tool import pad_picture
+    from .im_tool import pad_picture, ensure_image_has_3dim
 
 
 class AutoShowRunning:
@@ -53,6 +53,12 @@ class AutoShowRunning:
             if self._swap_lock.acquire(blocking=True):
                 for id, im in enumerate(self._im_list):
                     im = pad_picture(im, self.each_im_hw[1], self.each_im_hw[0], cv2.INTER_AREA, fill_value=self.pad_value)
+                    im = ensure_image_has_3dim(im)
+                    if im.shape[2] > 3:
+                        im = im[:, :, :3]
+                    elif im.shape[2] == 2:
+                        _pad = np.zeros([im.shape[0], im.shape[1], 1], dtype=im.dtype)
+                        im = np.concatenate([im, _pad], axis=2)
                     h = id // self.show_num_hw[1]
                     w = id %  self.show_num_hw[1]
                     big_im[h*self.each_im_hw[0]: (h+1)*self.each_im_hw[0], w*self.each_im_hw[1]: (w+1)*self.each_im_hw[1]] = im
