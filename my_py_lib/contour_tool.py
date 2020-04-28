@@ -18,7 +18,7 @@ import cv2
 assert cv2.__version__ >= '4.0'
 import numpy as np
 from typing import Iterable, List
-from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry import Polygon, MultiPolygon, MultiPoint
 from shapely.ops import unary_union
 try:
     from im_tool import ensure_image_has_same_ndim
@@ -67,7 +67,11 @@ def tr_my_to_polygon(my_contours):
     '''
     polygons = []
     for c in my_contours:
-        p = Polygon(c[:, ::-1])
+        # 如果点数少于3个，就先转化为多个点，然后buffer(1)转化为轮廓，可能得到MultiPolygon，使用convex_hull得到凸壳
+        if len(c) < 3 or calc_contour_area(c) == 0:
+            p = MultiPoint(c[:, ::-1]).buffer(1).convex_hull
+        else:
+            p = Polygon(c[:, ::-1])
         if not p.is_valid:
             # 如果轮廓在buffer(0)后变成了MultiPolygon，则尝试buffer(1)，如果仍然不能转换为Polygon，则将轮廓转换为凸壳，强制转换为Polygon
             p1 = p.buffer(0)
@@ -664,6 +668,21 @@ def morphology_contour(contour: np.ndarray, distance, resolution=16):
     out_cs = shapely_morphology_contour(c, distance, resolution)
     out_cs = tr_polygons_to_my(out_cs, contour.dtype)
     return out_cs
+
+
+def is_valid_contours(contours):
+    '''
+    检查每个轮廓是否是有效的
+    :param contours:            轮廓列表
+    :return: bools              布尔列表
+    '''
+    bs = []
+    for c in contours:
+        if len(c) < 3 or calc_contour_area(c) <= 0:
+            bs.append(False)
+        else:
+            bs.append(True)
+    return bs
     
 
 if __name__ == '__main__':
@@ -680,3 +699,6 @@ if __name__ == '__main__':
     cv2.imshow('show', im2[..., ::-1])
     cv2.imshow('show2', im3[..., ::-1])
     cv2.waitKey(0)
+
+    c3 = np.array([[0, 0], [0, 1]], np.int)
+    tr_my_to_polygon([c3])

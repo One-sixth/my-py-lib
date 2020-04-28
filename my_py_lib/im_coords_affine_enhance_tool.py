@@ -135,8 +135,25 @@ def coords_clip(coords_y1x1y2x2, img_hw):
     return new_coords
 
 
-def random_affine_matrix(move_diff, angle_diff, scale_diff, shear_diff, img_hw):
-    T = make_move()
+def random_affine_matrix(move_low_high=[-0.3, 0.3], angle_low_high=[-180, 180], scale_low_high=[0.7, 1.3], shear_low_high=[-20, 20], img_hw=[512, 512]):
+    move_ratio_h = np.random.uniform(move_low_high[0], move_low_high[1])
+    move_ratio_w = np.random.uniform(move_low_high[0], move_low_high[1])
+    T = make_move([move_ratio_h, move_ratio_w], img_hw)
+
+    angle = np.random.uniform(angle_low_high[0], angle_low_high[1])
+    R = make_rotate(angle, center_yx=[0.5, 0.5], img_hw=img_hw)
+
+    scale_ratio_h = np.random.uniform(scale_low_high[0], scale_low_high[1])
+    scale_ratio_w = np.random.uniform(scale_low_high[0], scale_low_high[1])
+    S = make_scale([scale_ratio_h, scale_ratio_w], center_yx=[0.5, 0.5], img_hw=img_hw)
+
+    shear_ratio_h = np.random.uniform(shear_low_high[0], shear_low_high[1])
+    shear_ratio_w = np.random.uniform(shear_low_high[0], shear_low_high[1])
+    Sh = make_shear([shear_ratio_h, shear_ratio_w])
+
+    # 运算方向注意 T->R->S->Sh
+    M = Sh @ S @ R @ T
+    return M
 
 
 if __name__ == '__main__':
