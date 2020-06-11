@@ -92,14 +92,14 @@ def resize_image(img, target_hw, interpolation=cv2.INTER_LINEAR):
     return out
 
 
-def show_image(img):
+def show_image(img, title='show_img'):
     """
     show image
     :param img: numpy array
     :return: None
     """
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    cv2.imshow('show_img', img)
+    cv2.imshow(title, img)
     cv2.waitKey(0)
 
 
@@ -321,6 +321,45 @@ def draw_boxes_and_labels_to_image(image, classes, coords, scores=None, classes_
 #     return np.asarray(im_patches)
 
 
+def draw_multi_img_in_big_img(imgs, out_dim, im_hw, n_hw, pad_color=0):
+    '''
+    Draw multiple images into one big image.
+    :param imgs:        Multiple images. The number of channels is not required to match.
+    :param out_dim:     The number of channels for the big image.
+    :param im_hw:       The height and width of the big image.
+    :param n_hw:        How many images are placed in each row and column.
+    :param pad_color:   The color of the fill.
+    :return: A big image.
+    '''
+    dtype = np.uint8
+    if len(imgs) > 0:
+        dtype = imgs[0].dtype
+    big_im = np.empty([*im_hw, out_dim], np.uint8)
+    big_im[..., :] = pad_color
+    each_im_hw = (im_hw[0] // n_hw[0], im_hw[1] // n_hw[1])
+    n_max_show = np.prod(n_hw)
+    for i in range(min(len(imgs), n_max_show)):
+        im = imgs[i]
+
+        # Make the number of channels equal.
+        im = ensure_image_has_3dim(im)
+        if im.shape[2] > out_dim:
+            im = im[..., :out_dim]
+        elif im.shape[2] < out_dim:
+            t = np.zeros([im.shape[0], im.shape[1], out_dim], dtype=im.dtype)
+            t[..., : im.shape[2]] = im
+            im = t
+
+        # Scale each image to the appropriate size.
+        im = pad_picture(im, each_im_hw[1], each_im_hw[0], cv2.INTER_AREA, pad_color)
+        im = ensure_image_has_3dim(im)
+
+        ph = i // n_hw[1]
+        pw = i % n_hw[1]
+        big_im[ph * each_im_hw[0]: (ph + 1) * each_im_hw[0], pw * each_im_hw[1]: (pw + 1) * each_im_hw[1]] = im
+    return big_im
+
+
 def test():
     mod_dir = os.path.dirname(__file__)
 
@@ -360,6 +399,10 @@ def test():
     m = cv2.resize(m, (256, 256), interpolation=cv2.INTER_NEAREST)
     # m = np.asarray(resize(m, (256, 256, 3), 0, 'constant', preserve_range=True, anti_aliasing=False), np.uint8)
     show_image(m)
+
+    # test draw_multi_img_in_big_img
+    new_img = draw_multi_img_in_big_img([im]*16, 3, [512, 768], [4, 4], (256, 128, 64))
+    show_image(new_img)
 
 
 if __name__ == '__main__':
