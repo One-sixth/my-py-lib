@@ -360,6 +360,41 @@ def draw_multi_img_in_big_img(imgs, out_dim, im_hw, n_hw, pad_color=0):
     return big_im
 
 
+def copy_make_border(src, top, bottom, left, right, value=None):
+    '''
+    My implement cv2.copyMakeBorder.
+    自己实现 cv2.copyMakeBorder 以避免错误 TypeError: Scalar value for argument 'value' is longer than 4.
+    :param src:     input image
+    :param top:
+    :param bottom:
+    :param left:
+    :param right:
+    :param value:   pad value
+    :return:
+    '''
+    assert top >= 0 and bottom >= 0 and left >= 0 and right >= 0, 'top, bottom, left or right must be equal or bigger than 0.'
+    new_im = np.zeros([src.shape[0] + top + bottom, src.shape[1] + left + right, src.shape[2]], dtype=src.dtype)
+    nh, nw = new_im.shape[:2]
+    if value is not None:
+        new_im[..., :] = value
+    new_im[top: nh-bottom, left: nw-right] = src
+    return new_im
+
+
+def bin_infill(im: np.ndarray):
+    '''
+    二进制填充函数
+    :param im:
+    :return:
+    '''
+    assert im.ndim == 3
+    new_im = np.zeros_like(im, dtype=np.uint8)
+    for i in range(im.shape[2]):
+        cons, _ = cv2.findContours((im[:, :, i] != 0).astype(np.uint8), mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
+        new_im[:, :, i] = cv2.drawContours(cv2.UMat(new_im[:, :, i]), cons, -1, 1, -1).get()
+    return new_im
+
+
 def test():
     mod_dir = os.path.dirname(__file__)
 
@@ -403,6 +438,17 @@ def test():
     # test draw_multi_img_in_big_img
     new_img = draw_multi_img_in_big_img([im]*16, 3, [512, 768], [4, 4], (256, 128, 64))
     show_image(new_img)
+
+    # test copy_make_border
+    new_img = copy_make_border(im, 10, 30, 50, 70, [20, 40, 60, 0])
+    show_image(new_img)
+
+    # test bin_infill
+    new_img_1 = np.zeros([512, 512, 3], np.uint8)
+    new_img_1[:, :, 0] = cv2.rectangle(cv2.UMat(new_img_1[:, :, 0]), (100, 100), (200, 200), 255, 2).get()
+    new_img_1[:, :, 1] = cv2.rectangle(cv2.UMat(new_img_1[:, :, 1]), (150, 150), (250, 250), 128, 2).get()
+    new_img_2 = bin_infill(new_img_1)
+    show_image(new_img_2 * 255)
 
 
 if __name__ == '__main__':
