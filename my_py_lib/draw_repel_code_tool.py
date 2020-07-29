@@ -9,7 +9,7 @@ import numpy as np
 from skimage.draw import disk as sk_disk
 
 
-def draw_repl_hm_ori(im: np.ndarray, pts: np.ndarray, r, A=0.3):
+def draw_repel_code_ori(im: np.ndarray, pts: np.ndarray, r, A=1):
     '''
     :param im: [H, W, 1] The image to be drawn.
     :param pts: [N, yx] Input points. You need to ensure that the each point is unique.
@@ -85,7 +85,7 @@ def draw_repl_hm_ori(im: np.ndarray, pts: np.ndarray, r, A=0.3):
     return im
 
 
-def draw_repl_hm_fast(im: np.ndarray, pts: np.ndarray, r, A=0.3):
+def draw_repel_code_fast(im: np.ndarray, pts: np.ndarray, r, A=1):
     '''
     Another faster acceleration method code of the above function, but there are accuracy problems.
     :param im: [H, W, 1] The image to be drawn.
@@ -134,8 +134,8 @@ if __name__ == '__main__':
     # 不允许有重复的坐标
     pts = np.unique(pts, axis=0)
 
-    oim1 = draw_repl_hm_ori(im, pts, 9)
-    oim2 = draw_repl_hm_fast(im, pts, 9)
+    oim1 = draw_repel_code_ori(im, pts, 9)
+    oim2 = draw_repel_code_fast(im, pts, 9)
 
     cv2.imshow('oim1', oim1)
     cv2.imshow('oim2', oim2)
