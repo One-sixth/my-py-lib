@@ -9,78 +9,82 @@ from typing import Union, Tuple, Iterable
 try:
     from im_tool import pad_picture
     import coord_tool
+    from affine_matrix_tool import make_move, make_rotate, make_scale, make_shear
+    import point_tool
 except ModuleNotFoundError:
     from .im_tool import pad_picture
     from . import coord_tool
+    from .affine_matrix_tool import make_move, make_rotate, make_scale, make_shear
+    from . import point_tool
 
 
-# 旋转，平移，缩放，切变
-
-def make_rotate(angle=180., center_yx=(0.5, 0.5), img_hw: Union[None, Tuple]=(512, 512)):
-    '''
-    旋转
-    :param angle: 顺时针旋转角度
-    :param center_yx: 如果 img_hw 不为 None，则为百分比坐标，否则为绝对坐标
-    :param img_hw: 图像大小，单位为像素
-    :return:
-    '''
-    if img_hw is not None:
-        center_yx = (img_hw[0] * center_yx[0], img_hw[1] * center_yx[1])
-
-    R = np.eye(3)
-    # 这里加个符号使其顺时针转动
-    R[:2] = cv2.getRotationMatrix2D(angle=-angle, center=center_yx[::-1], scale=1.)
-    return R
-
-
-def make_move(move_yx=(0.2, 0.2), img_hw: Union[None, Tuple]=(512, 512)):
-    '''
-    平移
-    :param move_yx: 平移距离，当 img_hw 不是None时，单位为图像大小百分比，如果 img_hw 是 None，则为像素单位
-    :param img_hw: 图像大小，单位为像素
-    :return:
-    '''
-    move_yx = list(move_yx)
-    if img_hw is not None:
-        move_yx[1] = move_yx[1] * img_hw[1]
-        move_yx[0] = move_yx[0] * img_hw[0]
-
-    T = np.eye(3)
-    T[0, 2] = move_yx[1]
-    T[1, 2] = move_yx[0]
-    return T
-
-
-def make_scale(scale_yx=(2., 2.), center_yx=(0.5, 0.5), img_hw: Union[None, Tuple]=(512, 512)):
-    '''
-    缩放
-    :param scale_yx: 单位必须为相对图像大小的百分比
-    :param center_yx: 变换中心位置，当 img_hw 不是None时，单位为图像大小百分比，如果 img_hw 是 None，则为像素单位
-    :param img_hw: 图像大小，单位为像素
-    :return:
-    '''
-    if img_hw is not None:
-        center_yx = (img_hw[0] * center_yx[0], img_hw[1] * center_yx[1])
-
-    S = np.eye(3)
-    S[0, 0] = scale_yx[1]
-    S[1, 1] = scale_yx[0]
-    S[0, 2] = (1-scale_yx[1]) * center_yx[1]
-    S[1, 2] = (1-scale_yx[0]) * center_yx[0]
-    return S
-
-
-def make_shear(shear_yx=(1.2, 1.2)):
-    '''
-    切变
-    :param shear_yx: 单位为角度；变量1，图像x边与窗口x边角度，变量2，图像y边与窗口y边角度
-    :return:
-    '''
-    # Shear
-    S = np.eye(3)
-    S[0, 1] = np.tan(shear_yx[1] * np.pi / 180)  # x shear (deg)
-    S[1, 0] = np.tan(shear_yx[0] * np.pi / 180)  # y shear (deg)
-    return S
+# # 旋转，平移，缩放，切变
+#
+# def make_rotate(angle=180., center_yx=(0.5, 0.5), img_hw: Union[None, Tuple]=(512, 512)):
+#     '''
+#     旋转
+#     :param angle: 顺时针旋转角度
+#     :param center_yx: 如果 img_hw 不为 None，则为百分比坐标，否则为绝对坐标
+#     :param img_hw: 图像大小，单位为像素
+#     :return:
+#     '''
+#     if img_hw is not None:
+#         center_yx = (img_hw[0] * center_yx[0], img_hw[1] * center_yx[1])
+#
+#     R = np.eye(3)
+#     # 这里加个符号使其顺时针转动
+#     R[:2] = cv2.getRotationMatrix2D(angle=-angle, center=center_yx[::-1], scale=1.)
+#     return R
+#
+#
+# def make_move(move_yx=(0.2, 0.2), img_hw: Union[None, Tuple]=(512, 512)):
+#     '''
+#     平移
+#     :param move_yx: 平移距离，当 img_hw 不是None时，单位为图像大小百分比，如果 img_hw 是 None，则为像素单位
+#     :param img_hw: 图像大小，单位为像素
+#     :return:
+#     '''
+#     move_yx = list(move_yx)
+#     if img_hw is not None:
+#         move_yx[1] = move_yx[1] * img_hw[1]
+#         move_yx[0] = move_yx[0] * img_hw[0]
+#
+#     T = np.eye(3)
+#     T[0, 2] = move_yx[1]
+#     T[1, 2] = move_yx[0]
+#     return T
+#
+#
+# def make_scale(scale_yx=(2., 2.), center_yx=(0.5, 0.5), img_hw: Union[None, Tuple]=(512, 512)):
+#     '''
+#     缩放
+#     :param scale_yx: 单位必须为相对图像大小的百分比
+#     :param center_yx: 变换中心位置，当 img_hw 不是None时，单位为图像大小百分比，如果 img_hw 是 None，则为像素单位
+#     :param img_hw: 图像大小，单位为像素
+#     :return:
+#     '''
+#     if img_hw is not None:
+#         center_yx = (img_hw[0] * center_yx[0], img_hw[1] * center_yx[1])
+#
+#     S = np.eye(3)
+#     S[0, 0] = scale_yx[1]
+#     S[1, 1] = scale_yx[0]
+#     S[0, 2] = (1-scale_yx[1]) * center_yx[1]
+#     S[1, 2] = (1-scale_yx[0]) * center_yx[0]
+#     return S
+#
+#
+# def make_shear(shear_yx=(1.2, 1.2)):
+#     '''
+#     切变
+#     :param shear_yx: 单位为角度；变量1，图像x边与窗口x边角度，变量2，图像y边与窗口y边角度
+#     :return:
+#     '''
+#     # Shear
+#     S = np.eye(3)
+#     S[0, 1] = np.tan(shear_yx[1] * np.pi / 180)  # x shear (deg)
+#     S[1, 0] = np.tan(shear_yx[0] * np.pi / 180)  # y shear (deg)
+#     return S
 
 
 def apply_affine_to_img(img, M, interpolation=cv2.INTER_LINEAR, borderValue=(0, 0, 0)):
@@ -96,6 +100,40 @@ def apply_affine_to_img(img, M, interpolation=cv2.INTER_LINEAR, borderValue=(0, 
     return img
 
 
+# def apply_affine_to_coords(coords_y1x1y2x2, M):
+#     '''
+#     对坐标进行仿射变换
+#     :param coords_y1x1y2x2: 要求输入格式为 [y1x2y2x2, y1x2y2x2, ...]
+#     :param M: 3x3 或 2x3 变换矩阵
+#     :return:
+#     '''
+#     coords_x1y1x2y2 = coord_tool.yxhw2xywh(coords_y1x1y2x2)
+#     # 对矩阵乘法不熟悉，所以使用易于理解的方式处理
+#
+#     # 分解矩阵为旋转矩阵和平移矩阵，因为貌似旋转和平移没法在一次运算中完成
+#     R = M[:2, 0:2]
+#     T = M[:2, 2:3]
+#
+#     # 先得到包围框的四个坐标点，需要变换后的矩形的外接正矩形
+#     coords_x1y1_x2y1_x1y2_x2y2 = coords_x1y1x2y2[:, [0, 1, 2, 1, 0, 3, 2, 3]]
+#     xy = coords_x1y1_x2y1_x1y2_x2y2.reshape([-1, 2])
+#     xy_t = R @ xy.T
+#     xy_t = T + xy_t
+#     xy = xy_t.T
+#
+#     # 变换完了...
+#     # coords_x1y1_x2y1_x1y2_x2y2 = xy.reshape([-1, 8])
+#     coords_groups_xy = xy.reshape([-1, 4, 2])
+#     # 将x坐标分到一组，y坐标分到一组，便于直接求大小
+#     coords_xy_groups = np.transpose(coords_groups_xy, [0, 2, 1])
+#     coord_xy_left_top = np.min(coords_xy_groups, 2)
+#     coord_xy_right_bottom = np.max(coords_xy_groups, 2)
+#     coord_x1y1x2y2 = np.concatenate([coord_xy_left_top, coord_xy_right_bottom], 1)
+#     out = coord_tool.xywh2yxhw(coord_x1y1x2y2)
+#
+#     return out
+
+
 def apply_affine_to_coords(coords_y1x1y2x2, M):
     '''
     对坐标进行仿射变换
@@ -103,31 +141,21 @@ def apply_affine_to_coords(coords_y1x1y2x2, M):
     :param M: 3x3 或 2x3 变换矩阵
     :return:
     '''
-    coords_x1y1x2y2 = coord_tool.yxhw2xywh(coords_y1x1y2x2)
-    # 对矩阵乘法不熟悉，所以使用易于理解的方式处理
-
-    # 分解矩阵为旋转矩阵和平移矩阵，因为貌似旋转和平移没法在一次运算中完成
-    R = M[:2, 0:2]
-    T = M[:2, 2:3]
-
     # 先得到包围框的四个坐标点，需要变换后的矩形的外接正矩形
-    coords_x1y1_x2y1_x1y2_x2y2 = coords_x1y1x2y2[:, [0, 1, 2, 1, 0, 3, 2, 3]]
-    xy = coords_x1y1_x2y1_x1y2_x2y2.reshape([-1, 2])
-    xy_t = R @ xy.T
-    xy_t = T + xy_t
-    xy = xy_t.T
+    coords_y1x1_y1x2_y2x1_y2x2 = coords_y1x1y2x2[:, [0, 1, 0, 3, 2, 1, 2, 3]]
+    pts_yx = np.reshape(coords_y1x1_y1x2_y2x1_y2x2, [-1, 2])
+    pts_yx = point_tool.apply_affine_to_points(pts_yx, M)
+    pts_yx = np.reshape(pts_yx, [-1, 8])
 
-    # 变换完了...
-    # coords_x1y1_x2y1_x1y2_x2y2 = xy.reshape([-1, 8])
-    coords_groups_xy = xy.reshape([-1, 4, 2])
+    coords_groups_yx = pts_yx.reshape([-1, 4, 2])
     # 将x坐标分到一组，y坐标分到一组，便于直接求大小
-    coords_xy_groups = np.transpose(coords_groups_xy, [0, 2, 1])
-    coord_xy_left_top = np.min(coords_xy_groups, 2)
-    coord_xy_right_bottom = np.max(coords_xy_groups, 2)
-    coord_x1y1x2y2 = np.concatenate([coord_xy_left_top, coord_xy_right_bottom], 1)
-    out = coord_tool.xywh2yxhw(coord_x1y1x2y2)
+    coords_yx_groups = np.transpose(coords_groups_yx, [0, 2, 1])
+    coord_yx_left_top = np.min(coords_yx_groups, 2)
+    coord_yx_right_bottom = np.max(coords_yx_groups, 2)
+    coord_y1x1y2x2 = np.concatenate([coord_yx_left_top, coord_yx_right_bottom], 1)
+    # out = coord_tool.xywh2yxhw(coord_y1x1y2x2)
 
-    return out
+    return coord_y1x1y2x2
 
 
 def coords_clip(coords_y1x1y2x2, img_hw):

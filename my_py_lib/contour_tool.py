@@ -23,9 +23,11 @@ from shapely.ops import unary_union
 try:
     from im_tool import ensure_image_has_same_ndim
     from list_tool import list_multi_get_with_ids, list_multi_get_with_bool
+    import point_tool
 except ModuleNotFoundError:
     from .im_tool import ensure_image_has_same_ndim
     from .list_tool import list_multi_get_with_ids, list_multi_get_with_bool
+    from . import point_tool
 
 
 def check_and_tr_umat(mat):
@@ -683,6 +685,19 @@ def is_valid_contours(contours):
         else:
             bs.append(True)
     return bs
+
+
+def apply_affine_to_contours(contours, M):
+    '''
+    对多个轮廓进行仿射变换
+    :param contours: 要求输入格式为 [[yx, yx, ...], [yx, yx, ...], ...]
+    :param M: 3x3 或 2x3 变换矩阵
+    :return:
+    '''
+    new_conts = []
+    for cont in contours:
+        new_conts.append(point_tool.apply_affine_to_points(cont, M))
+    return new_conts
     
 
 if __name__ == '__main__':
@@ -702,3 +717,15 @@ if __name__ == '__main__':
 
     c3 = np.array([[0, 0], [0, 1]], np.int)
     tr_my_to_polygon([c3])
+
+    from affine_matrix_tool import *
+    M = make_rotate(45, (50, 50), None)
+    cont = np.array([[25, 10], [25, 80], [75, 75], [75, 25]], np.float32)
+    im = np.zeros([100, 100])
+    im = draw_contours(im, [cont], 255, 2)
+    cv2.imshow('asd', im)
+    cv2.waitKey(0)
+    cont = apply_affine_to_contours([cont], M)[0]
+    im = draw_contours(im, [cont], 255, 2)
+    cv2.imshow('asd2', im)
+    cv2.waitKey(0)
