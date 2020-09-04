@@ -117,12 +117,13 @@ def tr_polygons_to_cv(polygons: List[Polygon], dtype=np.float32):
     return cv_contours
 
 
-def find_contours(im, mode, method):
+def find_contours(im, mode, method, keep_invalid_contour=False):
     '''
     cv2.findContours 的包装，区别是会自动转换cv2的轮廓格式到我的格式，和会自动删除轮廓点少于3的无效轮廓
     :param im:
     :param mode: 轮廓查找模式，例如 cv2.RETR_EXTERNAL cv2.RETR_TREE, cv2.RETR_LIST
     :param method: 轮廓优化方法，例如 cv2.CHAIN_APPROX_SIMPLE cv2.CHAIN_APPROX_NONE
+    :param keep_invalid_contour: 是否保留轮廓点少于3的无效轮廓。
     :return:
     '''
     # 简化轮廓，目前用于缩放后去除重叠点，并不进一步简化
@@ -130,9 +131,12 @@ def find_contours(im, mode, method):
     contours, _ = cv2.findContours(im, mode=mode, method=method)
     # 删除轮廓点少于3的无效轮廓
     valid_contours = []
-    for c in contours:
-        if len(c) >= 3:
-            valid_contours.append(c)
+    if not keep_invalid_contour:
+        for c in contours:
+            if len(c) >= 3:
+                valid_contours.append(c)
+    else:
+        valid_contours.extend(contours)
     valid_contours = tr_cv_to_my_contours(valid_contours)
     return valid_contours
 
