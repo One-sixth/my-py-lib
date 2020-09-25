@@ -31,15 +31,17 @@ class ImageOverScanWrapper:
             pad_value = [pad_value] * im.shape[-1]
         pad_value = tuple(pad_value)
 
-        # 额外判断，如果区域完全没有覆盖原图，后面会出错，预先判断后直接填充一个新区域
-        if (yx_end[0] <= 0 and yx_end[1] <= 0) or (yx_start[0] >= self.im.shape[0] and yx_start[1] >= self.im.shape[1]):
-            empty_im = np.empty([yx_end[0]-yx_start[0], yx_end[1]-yx_start[1], im.shape[-1]], self.im.dtype)
-            empty_im[:, :, :] = pad_value
-            return
-
         # 用于处理图像边界问题
         real_yx_start = np.clip(yx_start, [0, 0], im.shape[:2])
         real_yx_end = np.clip(yx_end, [0, 0], im.shape[:2])
+
+        # 额外判断，如果区域完全没有覆盖原图，后面会出错，预先判断后直接填充一个新区域
+        if (yx_end[0] <= 0 and yx_end[1] <= 0) or (yx_start[0] >= self.im.shape[0] and yx_start[1] >= self.im.shape[1]) or\
+                real_yx_start[0] == real_yx_end[0] or real_yx_start[1] == real_yx_end[1]:
+            empty_im = np.empty([yx_end[0]-yx_start[0], yx_end[1]-yx_start[1], im.shape[-1]], self.im.dtype)
+            empty_im[:, :, :] = pad_value
+            return empty_im
+
         im2 = im[real_yx_start[0]: real_yx_end[0], real_yx_start[1]: real_yx_end[1]]
 
         top = max(-yx_start[0], 0)
