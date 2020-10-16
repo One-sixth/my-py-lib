@@ -20,6 +20,8 @@ def opsl_read_region_any_ds(opsl_im: opsl.OpenSlide, ds_factor, level_0_start_yx
     '''
     level_downsamples = opsl_im.level_downsamples
 
+    assert ds_factor > 0, f'Error! Not allow ds_factor <= 0. ds_factor={ds_factor}'
+
     # base_level = None
     # ori_patch_hw = None
     target_patch_hw = np.array(level_0_region_hw, np.int) // ds_factor
@@ -32,7 +34,15 @@ def opsl_read_region_any_ds(opsl_im: opsl.OpenSlide, ds_factor, level_0_start_yx
         ori_patch_hw = target_patch_hw
     else:
         # 没有足够接近的，则寻找最接近，并且分辨率更高的，然后再缩放。
-        level = np.argmax(ds_factor < np.array(opsl_im.level_downsamples)) - 1
+        # 增加ds_factor超过level_downsamples边界的支持
+        if ds_factor > max(opsl_im.level_downsamples):
+            # 如果ds_factor大于图像自身包含的最大的倍率
+            level = opsl_im.level_count - 1
+        elif ds_factor < min(opsl_im.level_downsamples):
+            # 如果ds_factor小于图像自身最小的倍率
+            level = 0
+        else:
+            level = np.argmax(ds_factor < np.array(opsl_im.level_downsamples)) - 1
         assert level >= 0, 'Error! read_im_mod found unknow level {}'.format(level)
         base_level = level
         level_ds_factor = level_downsamples[level]
