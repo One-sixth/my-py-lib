@@ -124,7 +124,7 @@ def random_adjust_contrast_brightness(img, contrast_range: Union[float, Iterable
     :param brightness_range: 调整亮度，值域为(-1., +inf)
     :return:
     '''
-    params = random_adjust_contrast_brightness_params(contrast_range, brightness_range)
+    params = random_params_adjust_contrast_brightness(contrast_range, brightness_range)
     img = adjust_contrast_brightness(img, *params)
     return img
 
