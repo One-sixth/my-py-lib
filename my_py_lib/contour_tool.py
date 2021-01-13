@@ -20,6 +20,7 @@ import numpy as np
 from typing import Iterable, List
 from shapely.geometry import Polygon, MultiPolygon, MultiPoint
 from shapely.ops import unary_union
+import warnings
 try:
     from im_tool import ensure_image_has_same_ndim
     from list_tool import list_multi_get_with_ids, list_multi_get_with_bool
@@ -80,7 +81,7 @@ def tr_my_to_polygon(my_contours):
             if not isinstance(p1, Polygon):
                 p1 = p.buffer(1)
             if not isinstance(p1, Polygon):
-                print('Warning! Found an abnormal contour that cannot be converted directly to Polygon, currently will be forced to convex hull to allow it to be converted to Polygon')
+                warnings.warn('Warning! Found an abnormal contour that cannot be converted directly to Polygon, currently will be forced to convex hull to allow it to be converted to Polygon')
                 p1 = p.convex_hull
             p = p1
         polygons.append(p)
