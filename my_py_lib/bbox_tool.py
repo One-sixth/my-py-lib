@@ -20,10 +20,12 @@ def resize_bbox(bbox: np.ndarray, factor_hw, center_yx=(0, 0)):
     bf = np.all(center_yxyx == (0, 0, 0, 0))
     if not bf:
         bbox = bbox - center_yxyx
-        bbox = bbox * factor_hw
+        bbox[:2] *= factor_hw
+        bbox[2:] *= factor_hw
         bbox = bbox + center_yxyx
     else:
-        bbox = bbox * factor_hw
+        bbox[:2] *= factor_hw
+        bbox[2:] *= factor_hw
     return bbox
 
 
