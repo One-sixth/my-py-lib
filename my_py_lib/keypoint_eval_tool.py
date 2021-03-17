@@ -4,6 +4,7 @@
 
 import numpy as np
 from .score_tool import calc_score_f05_f1_f2_prec_recall
+from .point_tool import get_shortest_link_pair
 
 
 def calc_keypoint_score(pred_centers, pred_cls, label_centers, label_cls, cls_list, match_distance_thresh_list=(5, 7, 9, 11), use_single_pair=False):

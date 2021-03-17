@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
     im = np.zeros([512, 512, 1], np.float32)
     # 注意输入的pt坐标顺序为yx，而不是xy
-    pts = np.random.randint(0, 512, [100, 2], np.int)
+    pts = np.random.randint(0, 512, [100, 2], np.int32)
 
     # 不允许有重复的坐标
     pts = np.unique(pts, axis=0)

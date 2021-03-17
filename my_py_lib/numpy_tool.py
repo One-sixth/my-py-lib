@@ -14,6 +14,14 @@ def one_hot(class_array: np.ndarray, class_num):
     return b
 
 
+def softmax(x, axis=-1):
+    return np.exp(x)/ np.sum(np.exp(x), axis=axis, keepdims=True)
+
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+
 def tr_figure_to_array(fig):
     '''
     转换 matplotlib 的 figure 到 numpy 数组
