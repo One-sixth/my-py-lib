@@ -29,6 +29,20 @@ def resize_bbox(bbox: np.ndarray, factor_hw, center_yx=(0, 0)):
     return bbox
 
 
+def calc_bbox_center(bbox: np.ndarray):
+    '''
+    基于指定位置对包围框进行缩放
+    :param bbox:        要求 bbox 为 np.ndarray 和 格式为 y1x1y2x2
+    :param factor_hw:   缩放倍率
+    :param center_yx:   默认以(0, 0)为原点进行缩放
+    :return:
+    '''
+    assert isinstance(bbox, np.ndarray)
+    assert len(bbox) == 4
+    center = np.asarray((bbox[:2] + bbox[2:]) / 2, dtype=bbox.dtype)
+    return center
+
+
 def calc_bbox_iou_NtoN(bboxes1: np.ndarray, bboxes2: np.ndarray):
     '''
     计算N对个包围框的IOU，注意这里一一对应的，同时下面使用了...技巧，使其同时支持 1对N，N对1 的IOU计算
@@ -67,3 +81,21 @@ def calc_bbox_iou_1toN(bbox1: np.ndarray, bboxes: np.ndarray):
     '''
     assert bboxes.ndim == 2 and bbox1.ndim == 1
     return calc_bbox_iou_NtoN(bbox1, bboxes)
+
+
+def pad_bbox_to_square(bbox: np.ndarray):
+    '''
+    将输入的包围框填充为正方形，要求包围框坐标格式为y1x1y2x2或x1y1x2y2
+    :param bbox:
+    :return:
+    '''
+    assert bbox.ndim == 1 and len(bbox) == 4
+    dtype = bbox.dtype
+    bbox = np.asarray(bbox, np.float32)
+    t1 = bbox[2:] - bbox[:2]
+    tmax = max(t1)
+    t2 = tmax / t1
+    c = (bbox[:2] + bbox[2:]) / 2
+    bbox = resize_bbox(bbox, t2, c)
+    bbox = np.asarray(bbox, dtype)
+    return bbox
