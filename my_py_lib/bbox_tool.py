@@ -99,3 +99,34 @@ def pad_bbox_to_square(bbox: np.ndarray):
     bbox = resize_bbox(bbox, t2, c)
     bbox = np.asarray(bbox, dtype)
     return bbox
+
+
+def nms_process(confs: np.ndarray, bboxes: np.ndarray, iou_thresh: float=0.7):
+    '''
+    NMS 过滤，只需要置信度和坐标
+    :param confs:       置信度列表，形状为 [-1] 或 [-1, 1]
+    :param bboxes:      包围框列表，形状为 [-1, 4]，坐标格式为 y1x1y2x2 或 x1y1x2y2
+    :param iou_thresh:  IOU阈值
+    :return:
+    '''
+    assert len(confs) == len(bboxes)
+    confs = np.asarray(confs, np.float32).reshape([-1])
+    bboxes = np.asarray(bboxes, np.float32).reshape([-1, 4])
+    assert len(confs) == len(bboxes)
+    ids = np.argsort(confs)[::-1]
+    ids = ids.reshape([-1])
+    keep_boxes = []
+    keep_ids = []
+    for i in ids:
+        if len(keep_boxes) == 0:
+            keep_boxes.append(bboxes[i])
+            keep_ids.append(i)
+            continue
+        cur_box = bboxes[i]
+        ious = calc_bbox_iou_1toN(cur_box, np.asarray(keep_boxes, np.float32))
+        max_iou = np.max(ious)
+        if max_iou > iou_thresh:
+            continue
+        keep_boxes.append(bboxes[i])
+        keep_ids.append(i)
+    return keep_ids
