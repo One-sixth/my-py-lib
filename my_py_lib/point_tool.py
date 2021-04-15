@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Sized
 try:
     from affine_matrix_tool import make_scale, make_move, make_rotate, make_shear
 except ModuleNotFoundError:
@@ -82,6 +83,37 @@ def apply_affine_to_points(pts_yx, M):
     out_pts_xy = out_pts_xyz[:, :2]
     out_pts_yx = out_pts_xy[:, ::-1]
     return out_pts_yx
+
+
+def resize_points(points: np.ndarray, factor_hw=(1, 1), center_yx=(0, 0)):
+    '''
+    基于指定位置对点的坐标进行缩放
+    :param points:      要求 points 为 np.ndarray 和 格式为 y1x1
+    :param factor_hw:   缩放倍率，可以单个数字或元组
+    :param center_yx:   默认以(0, 0)为原点进行缩放
+    :return:
+    '''
+    assert isinstance(points, np.ndarray)
+    assert points.ndim in [1, 2] and points.shape[-1] == 2
+
+    if not isinstance(factor_hw, Sized):
+        factor_hw = [float(factor_hw), float(factor_hw)]
+
+    assert len(center_yx) == 2
+    assert len(factor_hw) == 2
+
+    center_yx = np.array(center_yx)
+    factor_hw = np.array(factor_hw)
+
+    ori_dtype = points.dtype
+
+    points = np.asarray(points, np.float32)
+    points -= center_yx
+    points *= factor_hw
+    points += center_yx
+    points = np.asarray(points, ori_dtype)
+
+    return points
 
 
 if __name__ == '__main__':

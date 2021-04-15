@@ -15,7 +15,6 @@ def get_cls_with_det_pts_from_cls_hm(cls_hm: np.ndarray, det_pts: np.ndarray, ra
     :param mode:    计算模式，转换检索半径内类别像素的到分类概率的方式
     :return:
     '''
-    print('Warning! 该函数尚未使用过，需要测试')
     assert cls_hm.ndim == 3
     assert cls_hm.shape[2] >= 1
     assert mode in ('sum', 'mean', 'max', 'min')
@@ -41,3 +40,76 @@ def get_cls_with_det_pts_from_cls_hm(cls_hm: np.ndarray, det_pts: np.ndarray, ra
             else:
                 raise AssertionError('Error! Invalid mode param.')
     return cls_probs
+
+
+def tr_bboxes_to_tlbr_heatmap(im_hw, hm_hw, bboxes):
+    '''
+    转换包围框到tlbr热图（FCOS热图方式）
+    额外修改，仅在置信度大于0.5时，才会设定tlbr值，否则坐标值为0
+    :param im_hw:   原始图像大小
+    :param hm_hw:   热图大小
+    :param bboxes:  包围框，形状为[-1, 4]，坐标格式为[y1x1y2x2, y1x1y2x2]
+    :return:
+    '''
+    ohm = np.zeros([*hm_hw, 1 + 4], dtype=np.float32)
+    im_hw = np.asarray(im_hw, np.int32)
+    hm_hw = np.asarray(hm_hw, np.int32)
+    for box in bboxes:
+        block_float_box = np.asarray(box / [*im_hw, *im_hw] * [*hm_hw, *hm_hw], np.float32)
+        block_box = np.asarray(block_float_box, np.int32)
+        center_hw = bbox_tool.calc_bbox_center(block_float_box).astype(np.int32)
+        for ih in range(max(block_box[0], 0), min(block_box[2] + 1, hm_hw[0])):
+            for iw in range(max(block_box[1], 0), min(block_box[3] + 1, hm_hw[1])):
+                # 只有正中间的IOU值，才设定为1，周围都设定为0
+                # if ih == block_int_center[0] and iw == block_int_center[1]:
+                #     ohm[ih, iw, :1] = 1.
+                cur_pos = np.asarray([ih + 0.5, iw + 0.5], np.float32)
+                t = cur_pos[0] - block_float_box[0]
+                l = cur_pos[1] - block_float_box[1]
+                b = block_float_box[2] - cur_pos[0]
+                r = block_float_box[3] - cur_pos[1]
+                if np.min([t, l, b, r]) <= 0:
+                    continue
+
+                if ih == center_hw[0] and iw == center_hw[1]:
+                    c = 1.
+                else:
+                    c = np.sqrt((min(l, r) / max(l, r)) * (min(t, b) / max(t, b)))
+
+                if c == 1.:
+                    ohm[ih, iw, 0:1] = c
+                elif ohm[ih, iw, 0:1] > 0:
+                    ohm[ih, iw, 0:1] = max(ohm[ih, iw, 0:1], c) - min(ohm[ih, iw, 0:1], c)
+                else:
+                    ohm[ih, iw, 0:1] = c
+                # yx位置，同样设定
+                if c > 0.5:
+                    ohm[ih, iw, 1:5] = [t, l, b, r]
+    return ohm
+
+
+def tr_tlbr_heatmap_to_bboxes(ohm, im_hw, thresh=0.5):
+    '''
+    转换tlbr热图（FCOS热图方式）到包围框
+    :param ohm:     tlbr热图块输入，要求格式为 [H,W,1+4]
+    :param im_hw:   原图像大小
+    :param thresh:  阈值
+    :return:
+    '''
+    assert isinstance(ohm, np.ndarray) and ohm.ndim == 3
+    assert len(im_hw) == 2
+    hm_hw = ohm.shape[:2]
+    hm_hwhw = np.asarray([*hm_hw, *hm_hw], np.float32)
+    im_hwhw = np.asarray([*im_hw, *im_hw], np.float32)
+    obj, tlbr, _ = np.split(ohm, [1, 5], 2)
+    grid = np.transpose(np.mgrid[:hm_hw[0], :hm_hw[1]], [1, 2, 0])
+    bs = obj > thresh
+    s_obj = obj[bs]
+    s_tlbr = tlbr[bs[..., 0]]
+    s_grid = grid[bs[..., 0]] + 0.5
+    s_tlbr[:, :2] = s_grid - s_tlbr[:, :2]
+    s_tlbr[:, 2:] = s_grid + s_tlbr[:, 2:]
+    bboxes = s_tlbr / hm_hwhw * im_hwhw
+    s_obj = np.asarray(s_obj, np.float32).reshape([-1, 1])
+    bboxes = np.asarray(bboxes, np.float32).reshape([-1, 4])
+    return s_obj, bboxes

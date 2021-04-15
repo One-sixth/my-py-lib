@@ -5,6 +5,7 @@
 
 
 import numpy as np
+from typing import Sized, Union
 
 
 def resize_bbox(bbox: np.ndarray, factor_hw, center_yx=(0, 0)):
@@ -27,6 +28,37 @@ def resize_bbox(bbox: np.ndarray, factor_hw, center_yx=(0, 0)):
         bbox[:2] *= factor_hw
         bbox[2:] *= factor_hw
     return bbox
+
+
+def resize_bboxes(bboxes: np.ndarray, factor_hw=(1, 1), center_yx=(0, 0)):
+    '''
+    基于指定位置对包围框进行缩放
+    :param bboxes:      要求 bboxes 为 np.ndarray 和 格式为 y1x1y2x2
+    :param factor_hw:   缩放倍率，可以单个数字或元组
+    :param center_yx:   默认以(0, 0)为原点进行缩放
+    :return:
+    '''
+    assert isinstance(bboxes, np.ndarray)
+    assert bboxes.ndim in [1, 2] and bboxes.shape[-1] == 4
+
+    if not isinstance(factor_hw, Sized):
+        factor_hw = [float(factor_hw), float(factor_hw)]
+
+    assert len(center_yx) == 2
+    assert len(factor_hw) == 2
+
+    center_yxyx = np.array([*center_yx] * 2)
+    factor_hwhw = np.array([*factor_hw] * 2)
+
+    ori_dtype = bboxes.dtype
+
+    bboxes = np.asarray(bboxes, np.float32)
+    bboxes -= center_yxyx
+    bboxes *= factor_hwhw
+    bboxes += center_yxyx
+    bboxes = np.asarray(bboxes, ori_dtype)
+
+    return bboxes
 
 
 def calc_bbox_center(bbox: np.ndarray):
@@ -130,3 +162,18 @@ def nms_process(confs: np.ndarray, bboxes: np.ndarray, iou_thresh: float=0.7):
         keep_boxes.append(bboxes[i])
         keep_ids.append(i)
     return keep_ids
+
+
+def make_bbox_by_center_point(center_yx, bbox_hw: Union[int, float, Sized], dtype=np.float32):
+    '''
+    基于中心点和宽高生成y1x1y2x2包围框
+    :param center_yx: 中心点
+    :param bbox_hw: 包围框大小
+    :return:
+    '''
+    if not isinstance(bbox_hw, Sized):
+        bbox_hw = [bbox_hw, bbox_hw]
+
+    assert len(center_yx) == 2
+    assert len(bbox_hw) == 2
+    return np.asarray([center_yx[0] - bbox_hw[0], center_yx[1] - bbox_hw[1], center_yx[0] + bbox_hw[0], center_yx[1] + bbox_hw[1]], dtype=dtype)

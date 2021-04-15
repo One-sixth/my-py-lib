@@ -31,6 +31,15 @@ x1y1wh_to_y1x1hw = xywh2yxhw
 y1x1hw_to_x1y1wh = xywh2yxhw
 
 
+def xy2yx(coord_or_coords):
+    coord_or_coords = np.asarray(coord_or_coords)
+    yx = coord_or_coords[..., ::-1]
+    return yx
+
+
+yx2xy = xy2yx
+
+
 def coord_pixelunit_to_scale(coord_or_coords, shape):
     """
     Scale down a list of coordinates from pixel unit to the ratio of image size i.e. in the range of [0, 1].
