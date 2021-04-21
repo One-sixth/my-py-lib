@@ -36,6 +36,14 @@ def list_bool_to_ids(self: Iterable):
     return ids
 
 
+def int_list(self: Iterable):
+    return [int(i) for i in self]
+
+
+def float_list(self: Iterable):
+    return [float(i) for i in self]
+
+
 if __name__ == '__main__':
     a = [1, 2, 3, 4, 5, 6]
     b = list_multi_get_with_ids(a, [0, 2, 4])

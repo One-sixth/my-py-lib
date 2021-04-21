@@ -4,6 +4,7 @@
 
 import numpy as np
 from skimage.draw import disk as sk_disk
+from . import bbox_tool
 
 
 def get_cls_with_det_pts_from_cls_hm(cls_hm: np.ndarray, det_pts: np.ndarray, radius: int=3, mode: str='mean'):
@@ -42,7 +43,7 @@ def get_cls_with_det_pts_from_cls_hm(cls_hm: np.ndarray, det_pts: np.ndarray, ra
     return cls_probs
 
 
-def tr_bboxes_to_tlbr_heatmap(im_hw, hm_hw, bboxes):
+def tr_bboxes_to_tlbr_heatmap(im_hw, hm_hw, bboxes, n_class=0, classes=None):
     '''
     转换包围框到tlbr热图（FCOS热图方式）
     额外修改，仅在置信度大于0.5时，才会设定tlbr值，否则坐标值为0
@@ -51,10 +52,16 @@ def tr_bboxes_to_tlbr_heatmap(im_hw, hm_hw, bboxes):
     :param bboxes:  包围框，形状为[-1, 4]，坐标格式为[y1x1y2x2, y1x1y2x2]
     :return:
     '''
-    ohm = np.zeros([*hm_hw, 1 + 4], dtype=np.float32)
+    if n_class > 0:
+        assert classes is not None, 'Error! The classes is not allow None when n_class > 0.'
+        assert len(bboxes) == len(classes), 'Error! The len(bboxes) must be equal len(classes).'
+        if len(classes) > 0:
+            assert max(classes) < n_class and min(classes) >= 0, 'Error! All class must be in range [0, n_class).'
+
+    ohm = np.zeros([*hm_hw, 1 + 4 + n_class], dtype=np.float32)
     im_hw = np.asarray(im_hw, np.int32)
     hm_hw = np.asarray(hm_hw, np.int32)
-    for box in bboxes:
+    for box_id, box in enumerate(bboxes):
         block_float_box = np.asarray(box / [*im_hw, *im_hw] * [*hm_hw, *hm_hw], np.float32)
         block_box = np.asarray(block_float_box, np.int32)
         center_hw = bbox_tool.calc_bbox_center(block_float_box).astype(np.int32)
@@ -71,17 +78,24 @@ def tr_bboxes_to_tlbr_heatmap(im_hw, hm_hw, bboxes):
                 if np.min([t, l, b, r]) <= 0:
                     continue
 
+                # 计算中心度
                 if ih == center_hw[0] and iw == center_hw[1]:
                     c = 1.
                 else:
                     c = np.sqrt((min(l, r) / max(l, r)) * (min(t, b) / max(t, b)))
 
+                # 设定置信度
                 if c == 1.:
                     ohm[ih, iw, 0:1] = c
                 elif ohm[ih, iw, 0:1] > 0:
                     ohm[ih, iw, 0:1] = max(ohm[ih, iw, 0:1], c) - min(ohm[ih, iw, 0:1], c)
                 else:
                     ohm[ih, iw, 0:1] = c
+
+                # 设定分类
+                if n_class > 0:
+                    ohm[ih, iw, 5+classes[box_id]] = c
+
                 # yx位置，同样设定
                 if c > 0.5:
                     ohm[ih, iw, 1:5] = [t, l, b, r]
@@ -96,20 +110,33 @@ def tr_tlbr_heatmap_to_bboxes(ohm, im_hw, thresh=0.5):
     :param thresh:  阈值
     :return:
     '''
-    assert isinstance(ohm, np.ndarray) and ohm.ndim == 3
+    assert isinstance(ohm, np.ndarray) and ohm.ndim == 3 and ohm.shape[2] >= 5
     assert len(im_hw) == 2
+
+    has_class = ohm.shape[2] > 5
+    n_class = ohm.shape[2] - 5
+
     hm_hw = ohm.shape[:2]
     hm_hwhw = np.asarray([*hm_hw, *hm_hw], np.float32)
     im_hwhw = np.asarray([*im_hw, *im_hw], np.float32)
-    obj, tlbr, _ = np.split(ohm, [1, 5], 2)
+    confs, tlbr, classes = np.split(ohm, [1, 5], 2)
     grid = np.transpose(np.mgrid[:hm_hw[0], :hm_hw[1]], [1, 2, 0])
-    bs = obj > thresh
-    s_obj = obj[bs]
+    bs = confs > thresh
+
+    s_confs = confs[bs]
+    if has_class:
+        s_classes = classes[bs[..., 0]]
+
     s_tlbr = tlbr[bs[..., 0]]
     s_grid = grid[bs[..., 0]] + 0.5
     s_tlbr[:, :2] = s_grid - s_tlbr[:, :2]
     s_tlbr[:, 2:] = s_grid + s_tlbr[:, 2:]
     bboxes = s_tlbr / hm_hwhw * im_hwhw
-    s_obj = np.asarray(s_obj, np.float32).reshape([-1, 1])
+    s_confs = np.asarray(s_confs, np.float32).reshape([-1, 1])
     bboxes = np.asarray(bboxes, np.float32).reshape([-1, 4])
-    return s_obj, bboxes
+
+    if has_class:
+        s_classes = np.asarray(s_classes, np.float32).reshape([-1, n_class])
+        return s_confs, bboxes, s_classes
+    else:
+        return s_confs, bboxes

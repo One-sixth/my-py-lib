@@ -61,7 +61,9 @@ def calc_bbox_score(pred_bboxes, pred_cls, label_bboxes, label_cls, cls_list, ma
     assert label_bboxes.ndim == 2 and label_bboxes.shape[1] == 4
     assert pred_cls.ndim == 1
     assert label_cls.ndim == 1
-    assert len(pred_bboxes) == len(pred_cls)
+    # assert len(pred_bboxes) == len(pred_cls)
+    if len(pred_bboxes) != len(pred_cls):
+        print('bad')
     assert len(label_bboxes) == len(label_cls)
 
     for cls in cls_list:
