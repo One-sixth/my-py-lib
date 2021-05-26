@@ -7,6 +7,7 @@ import imageio
 import numpy as np
 import os
 import cv2
+from skimage.transform import resize as sk_resize
 from PIL import Image, ImageDraw, ImageFont
 from typing import Union, Tuple, Iterable
 
@@ -78,17 +79,22 @@ def ensure_image_has_same_ndim(im: np.ndarray, ori_im: np.ndarray):
     return im
 
 
-def resize_image(img, target_hw, interpolation=cv2.INTER_LINEAR):
+def resize_image(img, target_hw, interpolation=cv2.INTER_LINEAR, *, use_sk_func=False):
     '''
     cv2.resize pack function
     :param img:
     :param target_hw:
-    :param interpolation: for example cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_NEAREST
+    :param interpolation: for example cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_NEAREST or 
+    :param use_sk_func: will use skimage.transform.resize to replace cv2.resize
     :return:
     '''
-    out = cv2.resize(img, dsize=tuple(target_hw[::-1]), interpolation=interpolation)
-    out = check_and_tr_umat(out)
-    out = ensure_image_has_same_ndim(out, img)
+    if use_sk_func:
+        out = sk_resize(img, target_hw, interpolation, mode='constant', cval=0, clip=True, preserve_range=True, anti_aliasing=False)
+        out = np.asarray(out, img.dtype)
+    else:
+        out = cv2.resize(img, dsize=tuple(target_hw[::-1]), interpolation=interpolation)
+        out = check_and_tr_umat(out)
+        out = ensure_image_has_same_ndim(out, img)
     return out
 
 
@@ -393,6 +399,51 @@ def bin_infill(im: np.ndarray):
         cons, _ = cv2.findContours((im[:, :, i] != 0).astype(np.uint8), mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
         new_im[:, :, i] = cv2.drawContours(cv2.UMat(new_im[:, :, i]), cons, -1, 1, -1).get()
     return new_im
+
+
+def pad_img_to_target_ratio(im, ratio=1.):
+    '''
+    居中填充图像到指定比例，并且返回填充参数
+    :param im:
+    :param ratio: 比例格式为h/w
+    :return:
+    '''
+    assert im.ndim == 3
+
+    h, w = im.shape[0:2]
+    if h / w > ratio:
+        w = int(h / ratio)
+    elif h / w < ratio:
+        h = int(w * ratio)
+
+    pad_h = h - im.shape[0]
+    pad_h_1 = pad_h // 2
+    pad_h_2 = pad_h - pad_h_1
+
+    pad_w = w - im.shape[1]
+    pad_w_1 = pad_w // 2
+    pad_w_2 = pad_w - pad_w_1
+
+    im = np.pad(im, [[pad_h_1, pad_h_2], [pad_w_1, pad_w_2], [0, 0]])
+    param = [[pad_h_1, pad_h_2], [pad_w_1, pad_w_2]]
+    return im, param
+
+
+def resize_img_to_target_size(im: np.ndarray, size_hw, inter=cv2.INTER_AREA):
+    '''
+    缩放图像到指定大小，并且返回缩放参数
+    :param im:
+    :param size_hw:
+    :return:
+    '''
+    assert im.ndim == 3
+    assert len(size_hw) == 2
+    im_hw = np.float32(im.shape[:2])
+    size_hw = np.float32(size_hw)
+    param = size_hw / im_hw
+    oim = cv2.resize(im, tuple(np.int32(size_hw[::-1])), interpolation=inter)
+    oim = ensure_image_has_3dim(oim)
+    return oim, param
 
 
 def test():

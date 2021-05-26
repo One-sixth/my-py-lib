@@ -3,8 +3,11 @@
 '''
 
 import numpy as np
+import cv2
 from skimage.draw import disk as sk_disk
 from . import bbox_tool
+from . import contour_tool
+from typing import Iterable
 
 
 def get_cls_with_det_pts_from_cls_hm(cls_hm: np.ndarray, det_pts: np.ndarray, radius: int=3, mode: str='mean'):
@@ -140,3 +143,31 @@ def tr_tlbr_heatmap_to_bboxes(ohm, im_hw, thresh=0.5):
         return s_confs, bboxes, s_classes
     else:
         return s_confs, bboxes
+
+
+def get_cls_contours_from_cls_hm(cls_hm, probs=0.5):
+    '''
+    从类别热图中获得多个类别轮廓
+    :param cls_hm:
+    :param probs:
+    :return:
+    '''
+    assert cls_hm.ndim == 3
+    assert cls_hm.shape[2] >= 1
+
+    C = cls_hm.shape[-1]
+
+    if not isinstance(probs, Iterable):
+        probs = [probs] * C
+
+    cls = []
+    cs = []
+
+    for c in range(C):
+        bin = np.uint8(cls_hm[..., c] > probs[c])
+        conts = contour_tool.find_contours(bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE, keep_invalid_contour=False)
+        n = len(conts)
+        cls.extend([c]*n)
+        cs.extend(conts)
+
+    return cls, cs

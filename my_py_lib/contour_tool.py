@@ -360,7 +360,7 @@ def draw_contours(im, contours, color, thickness=2, copy=False):
     contours = [c.astype(np.int32) for c in contours]
     if copy:
         im = im.copy()
-    im = cv2.drawContours(cv2.UMat(im), contours, -1, color, thickness)
+    im = cv2.drawContours(im, contours, -1, color, thickness)
     im = check_and_tr_umat(im)
     im = ensure_image_has_same_ndim(im, ori_im)
     return im

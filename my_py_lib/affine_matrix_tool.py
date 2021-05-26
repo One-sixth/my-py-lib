@@ -30,6 +30,23 @@ from typing import Union, Tuple, Iterable
 #     return M
 
 
+def get_rotation_matrix_2d(angle, center_yx, scale):
+    '''
+    等效于 cv2.getRotationMatrix2D
+    :param angle: 旋转角度
+    :param scale: 缩放
+    :param center_yx: 旋转点
+    :return:
+    '''
+    angle = np.deg2rad(angle)
+    a = scale * np.cos(angle)
+    b = scale * np.sin(angle)
+    M = [[a, b, (1-a)*center_yx[1] - b*center_yx[0]],
+         [-b, a, b*center_yx[1] + (1-a)*center_yx[0]]]
+    M = np.asarray(M, np.float32)
+    return M
+
+
 def make_rotate(angle=180., center_yx=(0.5, 0.5), img_hw: Union[None, Tuple]=(100, 100), dtype=np.float32):
     '''
     旋转
@@ -43,7 +60,7 @@ def make_rotate(angle=180., center_yx=(0.5, 0.5), img_hw: Union[None, Tuple]=(10
 
     R = np.eye(3, dtype=dtype)
     # 这里加个符号使其顺时针转动
-    R[:2] = cv2.getRotationMatrix2D(angle=-angle, center=center_yx[::-1], scale=1.)
+    R[:2] = get_rotation_matrix_2d(angle=-angle, center_yx=center_yx, scale=1.)
 
     # T = np.eye(3, dtype=dtype)
     # T[0, 2] = center_yx[1]
