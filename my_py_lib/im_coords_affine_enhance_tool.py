@@ -87,11 +87,12 @@ except ModuleNotFoundError:
 #     return S
 
 
-def apply_affine_to_img(img, M, interpolation=cv2.INTER_LINEAR, borderValue=(0, 0, 0), out_hw: tuple=None):
+def apply_affine_to_img(img, M, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0), out_hw: tuple=None):
     '''
     :param img: 图像
     :param M: 变换矩阵
     :param interpolation: 平滑方式
+    :param borderMode: 填充方式
     :param borderValue: 边缘填充颜色
     :return:
     '''
@@ -99,7 +100,7 @@ def apply_affine_to_img(img, M, interpolation=cv2.INTER_LINEAR, borderValue=(0, 
         hw = img.shape[:2]
     else:
         hw = tuple(out_hw)
-    img = cv2.warpPerspective(img, M, dsize=hw[::-1], flags=interpolation, borderValue=borderValue)
+    img = cv2.warpPerspective(img, M, dsize=hw[::-1], flags=interpolation, borderMode=borderMode, borderValue=borderValue)
     return img
 
 

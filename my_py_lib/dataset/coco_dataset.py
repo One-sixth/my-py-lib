@@ -23,14 +23,17 @@ class CocoDataset(Dataset):
     t2_stuff = 'stuff'
     t2_person_keypoints = 'person_keypoints'
 
-    def __init__(self, dataset_type, dataset_type2, dataset_path):
+    def __init__(self, dataset_type, dataset_type2, dataset_path, *, ann_path=None):
         Dataset.__init__(self)
 
         self.dataset_type = dataset_type
         self.dataset_type2 = dataset_type2
         self.dataset_path = dataset_path
 
-        annFile_file = '%s/annotations/%s_%s.json' % (dataset_path, dataset_type2, dataset_type)
+        if ann_path is not None:
+            annFile_file = ann_path
+        else:
+            annFile_file = '%s/annotations/%s_%s.json' % (dataset_path, dataset_type2, dataset_type)
         self.cocoGt = COCO(annFile_file)
         self.img_list = self.cocoGt.getImgIds()
 
@@ -141,6 +144,7 @@ class CocoDataset(Dataset):
         info = {}
         imgId = self.img_list[label_id]
         img = self.cocoGt.imgs[imgId]
+        info['image_name'] = img['file_name']
         info['image_path'] = os.path.join(self.dataset_path, self.dataset_type, img['file_name'])
         info['image_width'] = img['width']
         info['image_height'] = img['height']
