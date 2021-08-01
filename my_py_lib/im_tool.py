@@ -446,6 +446,41 @@ def resize_img_to_target_size(im: np.ndarray, size_hw, inter=cv2.INTER_AREA):
     return oim, param
 
 
+def show_hm_on_image(img: np.ndarray,
+                     hm: np.ndarray,
+                     max_blend_value: float = 0.3,
+                     colormap: int = cv2.COLORMAP_JET) -> np.ndarray:
+    '''
+    在图像上绘制热图，便于观察
+    :param img: 输入图像，要求为RGB图形，shape 为 (H, W, 3)，dtype 为 np.uint8
+    :param hm:  输入热图，要求为灰度图，shape 为 (H, W) or (H, W, 1)，dtype 为 np.float16 or np.float32 or np.float64
+    :param max_blend_value: 最大混合值，默认为 0.3
+    :param colormap: 颜色映射方法，默认为 cv2.COLORMAP_JET
+    :return:
+    '''
+    assert isinstance(img, np.ndarray)
+    assert isinstance(hm, np.ndarray)
+    assert img.dtype == np.uint8
+    assert img.ndim == 3 and img.shape[-1] == 3
+    assert hm.dtype in (np.float16, np.float32, np.float64)
+    assert hm.ndim in [2, 3] and (hm.ndim != 3 or hm.shape[-1] == 1)
+
+    hm = ensure_image_has_3dim(hm)
+
+    color_hm = cv2.applyColorMap(np.uint8(255 * hm), colormap)
+    color_hm = cv2.cvtColor(color_hm, cv2.COLOR_BGR2RGB)
+
+    img = np.float32(img)
+    hm = np.float32(hm)
+    color_hm = np.float32(color_hm)
+
+    alpha = np.minimum(hm, max_blend_value)
+
+    oim = img * (1-alpha) + color_hm * alpha
+    oim = np.uint8(np.round(oim).clip(0, 255))
+    return oim
+
+
 def test():
     mod_dir = os.path.dirname(__file__)
 

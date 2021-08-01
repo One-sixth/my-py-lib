@@ -1,4 +1,5 @@
 from typing import Iterable
+import math
 
 
 def list_multi_get_with_ids(self: list, ids: Iterable):
@@ -44,6 +45,37 @@ def float_list(self: Iterable):
     return [float(i) for i in self]
 
 
+def list_split_by_size(self: Iterable, size: int):
+    self = list(self)
+    g = []
+    i = 0
+    while True:
+        s = self[i*size: (i+1)*size]
+        i+=1
+        if len(s) == size:
+            g.append(s)
+        elif len(s) > 0:
+            g.append(s)
+            break
+        else:
+            break
+    return g
+
+
+def list_split_by_group(self: Iterable, n_group: int):
+    self = list(self)
+    sizes = [int(len(self) / n_group)] * n_group
+    for i in range(len(self) % n_group):
+        sizes[i] += 1
+    g = []
+    i = 0
+    for s in sizes:
+        l = self[i: i+s]
+        g.append(l)
+        i += s
+    return g
+
+
 if __name__ == '__main__':
     a = [1, 2, 3, 4, 5, 6]
     b = list_multi_get_with_ids(a, [0, 2, 4])
@@ -60,3 +92,9 @@ if __name__ == '__main__':
 
     d = list_bool_to_ids([True, False, True, False, False, False])
     assert len(d) == 2 and d[0] == 0 and d[1] == 2
+
+    b = list_split_by_size(a, 4)
+    assert b == [[1, 2, 3, 4], [5, 6]]
+
+    b = list_split_by_group(a, 2)
+    assert b == [[1, 2, 3], [4, 5, 6]]
