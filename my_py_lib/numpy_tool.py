@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.special import softmax
+from scipy.special import expit as sigmoid
 
 
 def one_hot(class_array: np.ndarray, class_num, dim = -1, dtype = np.int32):
@@ -29,12 +31,12 @@ def one_hot_invert(onehot_array, dim=-1):
     return class_arr
 
 
-def softmax(x, axis=-1):
-    return np.exp(x) / np.sum(np.exp(x), axis=axis, keepdims=True)
+# def softmax(x, axis=-1):
+#     return np.exp(x) / np.sum(np.exp(x), axis=axis, keepdims=True)
 
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+# def sigmoid(x):
+#     return 1 / (1 + np.exp(-x))
 
 
 def tr_figure_to_array(fig):

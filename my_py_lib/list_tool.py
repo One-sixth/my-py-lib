@@ -76,6 +76,18 @@ def list_split_by_group(self: Iterable, n_group: int):
     return g
 
 
+def list_group_by_classes(self: Iterable, classes: Iterable):
+    cls_uq = list(set(classes))
+    d = {}
+    for c in cls_uq:
+        d[c] = []
+
+    for v, k in zip(self, classes):
+        d[k].append(v)
+
+    return d
+
+
 if __name__ == '__main__':
     a = [1, 2, 3, 4, 5, 6]
     b = list_multi_get_with_ids(a, [0, 2, 4])
@@ -98,3 +110,6 @@ if __name__ == '__main__':
 
     b = list_split_by_group(a, 2)
     assert b == [[1, 2, 3], [4, 5, 6]]
+
+    b = list_group_by_classes(a, [1, 1, 2, 2, 3, 3])
+    assert b == {1: [1, 2], 2: [3, 4], 3: [5, 6]}

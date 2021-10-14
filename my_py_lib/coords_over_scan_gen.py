@@ -35,7 +35,7 @@ def n_step_scan_coords_gen_v2(im_hw=(512, 512), window_hw=(128, 128), n_step: fl
     当前只支持生成整数坐标
     :param im_hw:       图像大小
     :param window_hw:   窗口高宽
-    :param n_step:      N步长，默认为1步长
+    :param n_step:      N步长，默认为1倍步长
     :return: yx_start, yx_end   扫描框左上角和右下角坐标
     '''
     step_hw = [int(window_hw[0] * n_step), int(window_hw[1] * n_step)]
