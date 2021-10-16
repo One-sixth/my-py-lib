@@ -116,6 +116,19 @@ def resize_points(points: np.ndarray, factor_hw=(1, 1), center_yx=(0, 0)):
     return points
 
 
+def is_points_in_bbox(points: np.ndarray, bbox: np.ndarray):
+    '''
+    检查点是否在指定包围盒里面
+    :param points:  点集，[N, yx或xy]格式
+    :param bbox:    y1x1y2x2或x1y1x2y2格式
+    :return:
+    '''
+    points = np.asarray(points)
+    bbox = np.asarray(bbox)
+    b = np.logical_and(np.all(points > bbox[:2], 1), np.all(points < bbox[2:], 1))
+    return b
+
+
 if __name__ == '__main__':
 
     # 测试 get_shortest_link_pair
@@ -142,3 +155,7 @@ if __name__ == '__main__':
     s_pts_yx = apply_affine_to_points(pts_yx, S)
     assert np.allclose(s_pts_yx, [-2, -30])
     print(s_pts_yx)
+
+    # 测试 is_points_in_bbox
+    r = is_points_in_bbox(pts1, [4, 4, 6, 6])
+    assert r == (False, True, False, False)

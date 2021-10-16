@@ -692,6 +692,23 @@ def is_valid_contours(contours):
     return bs
 
 
+def is_contours_too_close_border(contours, hw, factor):
+    '''
+    检测轮廓是否过于靠近边界
+    :param contours:    轮廓
+    :param hw:          窗口大小
+    :param factor:      靠近百分比，值域[0, 1]，常用0.1
+    :return:
+    '''
+    factor = factor / 2
+    ids = []
+    tlbr = np.asarray([hw[0]*factor, hw[1]*factor, hw[0]*(1-factor), hw[1]*(1-factor)])
+    for i, c in enumerate(contours):
+        if np.any(c<tlbr[None, :2]) or np.any(c>tlbr[None, 2:]):
+            ids.append(i)
+    return ids
+
+
 def apply_affine_to_contours(contours, M):
     '''
     对多个轮廓进行仿射变换
