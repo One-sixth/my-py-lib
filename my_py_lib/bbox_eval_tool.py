@@ -7,9 +7,9 @@ from .score_tool import calc_score_f05_f1_f2_prec_recall
 from .bbox_tool import calc_bbox_iou_1toN
 
 
-def calc_bbox_score(pred_bboxes, pred_cls, label_bboxes, label_cls, cls_list, match_iou_threshs=(0.3, 0.5, 0.7), use_single_pair=False):
+def calc_bbox_score(pred_bboxes, pred_cls, label_bboxes, label_cls, cls_list, match_iou_thresh_list=(0.3, 0.5, 0.7), use_single_pair=False):
     '''
-    通用关键点评估
+    通用包围框评估
     将会返回一个分数字典
     当预测与标签距离小于评估距离时，将会认定为真阳性
     结构为
@@ -22,13 +22,13 @@ def calc_bbox_score(pred_bboxes, pred_cls, label_bboxes, label_cls, cls_list, ma
     pred_repeat     当use_single_pair为False时，一个预测可以同时匹配多个标签，该度量将会统计匹配数量大于1的预测的数量
     label_repeat    当use_single_pair为False时，一个标签可以同时匹配多个预测，该度量将会统计匹配数量大于1的标签的数量
 
-    :param pred_bboxes:         预测的包围框
-    :param pred_cls:            预测的类别
-    :param label_bboxes:        标签的包围框
-    :param label_cls:           标签的类别
-    :param cls_list:            要评估的类别列表
-    :param match_iou_threshs:   多个评估阈值
-    :param use_single_pair:     若为真，则使用一个预测只匹配一个标签。如果假，每个预测都可以匹配多个标签
+    :param pred_bboxes:             预测的包围框
+    :param pred_cls:                预测的类别
+    :param label_bboxes:            标签的包围框
+    :param label_cls:               标签的类别
+    :param cls_list:                要评估的类别列表
+    :param match_iou_thresh_list:   多个评估阈值
+    :param use_single_pair:         若为真，则使用一个预测只匹配一个标签。如果假，每个预测都可以匹配多个标签
     :return:
     '''
     score_table = {}
@@ -36,7 +36,7 @@ def calc_bbox_score(pred_bboxes, pred_cls, label_bboxes, label_cls, cls_list, ma
     if len(pred_bboxes) == 0 or len(label_bboxes) == 0:
         for cls in cls_list:
             score_table[cls] = {}
-            for iou_th in match_iou_threshs:
+            for iou_th in match_iou_thresh_list:
                 score_table[cls][iou_th] = {}
                 score_table[cls][iou_th]['found_pred'] = 0
                 score_table[cls][iou_th]['fakefound_pred'] = len(pred_bboxes)
@@ -61,9 +61,7 @@ def calc_bbox_score(pred_bboxes, pred_cls, label_bboxes, label_cls, cls_list, ma
     assert label_bboxes.ndim == 2 and label_bboxes.shape[1] == 4
     assert pred_cls.ndim == 1
     assert label_cls.ndim == 1
-    # assert len(pred_bboxes) == len(pred_cls)
-    if len(pred_bboxes) != len(pred_cls):
-        print('bad')
+    assert len(pred_bboxes) == len(pred_cls)
     assert len(label_bboxes) == len(label_cls)
 
     for cls in cls_list:
@@ -73,32 +71,30 @@ def calc_bbox_score(pred_bboxes, pred_cls, label_bboxes, label_cls, cls_list, ma
         selected_pred_bboxes = pred_bboxes[pred_selected_bools]
         selected_label_bboxes = label_bboxes[label_selected_bools]
 
-        for iou_th in match_iou_threshs:
+        for iou_th in match_iou_thresh_list:
             score_table[cls][iou_th] = {}
 
             label_found_count = np.zeros(len(selected_label_bboxes), np.int32)
             pred_found_count = np.zeros(len(selected_pred_bboxes), np.int32)
 
-            if not use_single_pair:
-                for pi, pred_bbox in enumerate(selected_pred_bboxes):
-                    if len(selected_label_bboxes) != 0:
+            if len(selected_label_bboxes) > 0:
+                if not use_single_pair:
+                    for pi, pred_bbox in enumerate(selected_pred_bboxes):
                         ious = calc_bbox_iou_1toN(pred_bbox, selected_label_bboxes)
                         close_bools = ious >= iou_th
                         label_found_count[close_bools] += 1
                         pred_found_count[pi] += np.array(close_bools, np.int32).sum()
-            else:
-                for pi, pred_bbox in enumerate(selected_pred_bboxes):
-                    if len(selected_label_bboxes) != 0:
+                else:
+                    for pi, pred_bbox in enumerate(selected_pred_bboxes):
                         ious = calc_bbox_iou_1toN(pred_bbox, selected_label_bboxes)
                         close_bools = ious >= iou_th
                         for ii in np.argsort(ious)[::-1]:
                             if not close_bools[ii]:
                                 break
-                            if label_found_count[ii] > 0:
-                                continue
-                            else:
+                            elif label_found_count[ii] == 0:
                                 label_found_count[ii] += 1
                                 pred_found_count[pi] += 1
+                                break
 
             found_pred = (pred_found_count > 0).sum()
             fakefound_pred = (pred_found_count == 0).sum()

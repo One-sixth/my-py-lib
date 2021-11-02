@@ -6,7 +6,7 @@ except ModuleNotFoundError:
     from .affine_matrix_tool import make_scale, make_move, make_rotate, make_shear
 
 
-def get_shortest_link_pair(pt_list1, pt_list2, dist_th: float):
+def get_point_shortest_link_pair(pt_list1, pt_list2, dist_th: float):
     '''
     求两组点之间最短链接对
     :param pt_list1: 点集1
@@ -57,6 +57,10 @@ def get_shortest_link_pair(pt_list1, pt_list2, dist_th: float):
             out_contact_distance.append(contact_distance[cur_pair_id])
 
     return out_contact_pts1, out_contact_pts2, out_contact_distance
+
+
+# 改名前兼容性修改
+get_shortest_link_pair = get_point_shortest_link_pair
 
 
 def apply_affine_to_points(pts_yx, M):

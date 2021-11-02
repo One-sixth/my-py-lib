@@ -42,6 +42,7 @@ def one_hot_invert(onehot_array, dim=-1):
 def tr_figure_to_array(fig):
     '''
     转换 matplotlib 的 figure 到 numpy 数组
+    :param fig:
     '''
     fig.canvas.draw()
     mv = fig.canvas.buffer_rgba()
@@ -51,6 +52,55 @@ def tr_figure_to_array(fig):
     # 需要复制，否则会映射到一个matlibplot的重用内存区，导致返回的图像会被破坏
     im = im.copy()
     return im
+
+
+def round_int32(x):
+    '''
+    把一个数字变成int32
+    :param x:
+    :return:
+    '''
+    return np.int32(np.round(x))
+
+
+def universal_get_shortest_link_pair(dist_table: np.ndarray, dist_th, compare_op=np.less):
+    '''
+    通用函数，根据距离表得到最短链匹配ID
+    :param dist_table:  距离表，要求维度数量等于2
+    :param dist_th:     距离阈值，在距离阈值以外的区域不参与匹配
+    :param compare_op:  比较操作，默认为 np.less，代表当 dists < dist_th 时为真。
+    :return:
+    '''
+    assert dist_table.ndim == 2
+    ids1 = np.arange(dist_table.shape[0])
+    ids2 = np.arange(dist_table.shape[1])
+
+    ids1 = np.tile(ids1[:, None], [1, dist_table.shape[1]]).reshape([-1])
+    ids2 = np.tile(ids2[None, :], [dist_table.shape[0], 1]).reshape([-1])
+    ids_pair = np.stack([ids1, ids2], 1)
+    del ids1, ids2
+
+    dists = dist_table.reshape([-1])
+
+    bs = compare_op(dists, dist_th)
+    select_dists = dists[bs]
+    select_ids_pair = ids_pair[bs]
+
+    sort_ids = np.argsort(select_dists)[::-1]
+    select_dists = select_dists[sort_ids]
+    select_ids_pair = select_ids_pair[sort_ids]
+
+    out_contact_ids1 = []
+    out_contact_ids2 = []
+    out_contact_dists = []
+
+    for dist, (p1, p2) in zip(select_dists, select_ids_pair):
+        if p1 not in out_contact_ids1 and p2 not in out_contact_ids2:
+            out_contact_ids1.append(p1)
+            out_contact_ids2.append(p2)
+            out_contact_dists.append(dist)
+
+    return out_contact_ids1, out_contact_ids2, out_contact_dists
 
 
 if __name__ == '__main__':

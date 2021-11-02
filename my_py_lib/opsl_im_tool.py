@@ -6,6 +6,7 @@ import openslide as opsl
 import numpy as np
 import cv2
 import my_py_lib.im_tool as im_tool
+from my_py_lib.numpy_tool import round_int32
 
 
 def opsl_read_region_any_ds(opsl_im: opsl.OpenSlide, ds_factor, level_0_start_yx, level_0_region_hw, close_thresh=0.0):
@@ -20,11 +21,15 @@ def opsl_read_region_any_ds(opsl_im: opsl.OpenSlide, ds_factor, level_0_start_yx
     '''
     level_downsamples = opsl_im.level_downsamples
 
+    level_0_start_yx = round_int32(level_0_start_yx)
+    level_0_region_hw = round_int32(level_0_region_hw)
+
     assert ds_factor > 0, f'Error! Not allow ds_factor <= 0. ds_factor={ds_factor}'
 
     # base_level = None
     # ori_patch_hw = None
-    target_patch_hw = np.array(level_0_region_hw, np.int) // ds_factor
+    # 这里需要使用round，因为大小需要比较准确，避免 511.99 被压到 511
+    target_patch_hw = round_int32(level_0_region_hw / ds_factor)
 
     is_close_list = np.isclose(ds_factor, level_downsamples, rtol=close_thresh, atol=0)
     if np.any(is_close_list):
@@ -49,7 +54,7 @@ def opsl_read_region_any_ds(opsl_im: opsl.OpenSlide, ds_factor, level_0_start_yx
         ori_patch_hw = np.array(target_patch_hw / level_ds_factor * ds_factor, np.int)
 
     # 读取图块，如果不是目标大小则缩放到目标大小
-    im = np.array(opsl_im.read_region(level_0_start_yx[::-1], base_level, ori_patch_hw[::-1]), np.uint8)[:, :, :3]
+    im = np.uint8(opsl_im.read_region(level_0_start_yx[::-1], base_level, ori_patch_hw[::-1]))[:, :, :3]
     if np.any(ori_patch_hw != target_patch_hw):
         im = im_tool.resize_image(im, target_patch_hw, cv2.INTER_AREA)
     return im

@@ -90,9 +90,9 @@ def calc_keypoint_score(pred_centers, pred_cls, label_centers, label_cls, cls_li
             else:
                 pred_pt_ids, label_pt_ids, _ = get_shortest_link_pair(selected_pred_centers, selected_label_centers, dt)
                 for i in pred_pt_ids:
-                    pred_found_count[i] = 1
+                    pred_found_count[i] += 1
                 for i in label_pt_ids:
-                    label_found_count[i] = 1
+                    label_found_count[i] += 1
 
             found_pred = (pred_found_count > 0).sum()
             fakefound_pred = (pred_found_count == 0).sum()

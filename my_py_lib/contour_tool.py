@@ -19,16 +19,19 @@ assert cv2.__version__ >= '4.0'
 import numpy as np
 from typing import Iterable, List
 from shapely.geometry import Polygon, MultiPolygon, MultiPoint
+from shapely.geometry.base import BaseMultipartGeometry
 from shapely.ops import unary_union
 import warnings
 try:
     from im_tool import ensure_image_has_same_ndim
     from list_tool import list_multi_get_with_ids, list_multi_get_with_bool
     import point_tool
+    from numpy_tool import universal_get_shortest_link_pair
 except ModuleNotFoundError:
     from .im_tool import ensure_image_has_same_ndim
     from .list_tool import list_multi_get_with_ids, list_multi_get_with_bool
     from . import point_tool
+    from .numpy_tool import universal_get_shortest_link_pair
 
 
 def check_and_tr_umat(mat):
@@ -70,6 +73,9 @@ def tr_my_to_polygon(my_contours):
     '''
     polygons = []
     for c in my_contours:
+        # 如果c是float64位的，要转化为float32位
+        if c.dtype == np.float64:
+            c = c.astype(np.float32)
         # 如果点数少于3个，就先转化为多个点，然后buffer(1)转化为轮廓，可能得到MultiPolygon，使用convex_hull得到凸壳
         if len(c) < 3 or calc_contour_area(c) == 0:
             p = MultiPoint(c[:, ::-1]).buffer(1).convex_hull
@@ -96,6 +102,9 @@ def tr_polygons_to_my(polygons: List[Polygon], dtype: np.dtype=np.float32):
     :return:
     '''
     my_contours = []
+    tmp = shapely_ensure_polygon_list(polygons)
+    assert len(tmp) == len(polygons), 'Error! The input polygons has some not Polygon item.'
+    polygons = tmp
     for poly in polygons:
         x, y = poly.exterior.xy
         c = np.array(list(zip(y, x)), dtype)
@@ -116,6 +125,26 @@ def tr_polygons_to_cv(polygons: List[Polygon], dtype=np.float32):
         c = np.array(list(zip(x, y)), dtype)[:, None]
         cv_contours.append(c)
     return cv_contours
+
+
+def shapely_ensure_polygon_list(ps):
+    '''
+    确保返回值是 List[Polygon]
+    本函数目的是减少shapely返回值可能是任何类的问题
+    :param ps:
+    :return:
+    '''
+    if isinstance(ps, Polygon):
+        ps = [ps]
+    elif isinstance(ps, MultiPolygon):
+        ps = list(ps.geoms)
+    elif isinstance(ps, BaseMultipartGeometry):
+        ps = [p for p in ps.geoms if isinstance(p, Polygon)]
+    elif isinstance(ps, Iterable):
+        ps = [p for p in ps if isinstance(p, Polygon)]
+    else:
+        raise RuntimeError('Error! Bad input in shapely_ensure_polygon_list.')
+    return ps
 
 
 def find_contours(im, mode, method, keep_invalid_contour=False):
@@ -357,9 +386,12 @@ def draw_contours(im, contours, color, thickness=2, copy=False):
             color = color * im.shape[-1]
     contours = tr_my_to_cv_contours(contours)
     # 确保为整数
-    contours = [c.astype(np.int32) for c in contours]
+    contours = [np.int32(c) for c in contours]
     if copy:
         im = im.copy()
+    else:
+        # 必须是连续可写数组才能被opencv原地写入
+        assert im.flags['C_CONTIGUOUS'] and im.flags['WRITEABLE'], 'Error! Draw im is not C_CONTIGUOUS or not WRITEABLE.'
     im = cv2.drawContours(im, contours, -1, color, thickness)
     im = check_and_tr_umat(im)
     im = ensure_image_has_same_ndim(im, ori_im)
@@ -403,6 +435,22 @@ def calc_iou_with_contours_1toN(c1, batch_c):
     batch_c = tr_my_to_polygon(batch_c)
     ious = shapely_calc_iou_with_contours_1toN(c1, batch_c)
     return ious
+
+
+def calc_iou_with_contours_NtoM(contours1, contours2):
+    '''
+    求两组轮廓间两两匹配的IOU分数
+    :param c1:
+    :param batch_c:
+    :return:
+    '''
+    contours1 = tr_my_to_polygon(contours1)
+    contours2 = tr_my_to_polygon(contours2)
+
+    pair_ious = np.zeros([len(contours1), len(contours2)], np.float32)
+    for i in range(len(contours1)):
+        pair_ious[i] = shapely_calc_iou_with_contours_1toN(contours1[i], contours2)
+    return pair_ious
 
 
 def shapely_calc_occupancy_ratio(contour1, contour2):
@@ -497,16 +545,15 @@ def shapely_merge_to_single_contours(polygons: List[Polygon]):
         if not ps[0].intersects(ps[i]):
             del ps[i]
     p = unary_union(ps)
-    if isinstance(p, MultiPolygon):
-        # 不知为何会出现这个，目前解决方式是只保留最大面积的
-        p = list(p)
-        c1 = None
-        c2 = -np.inf
-        for c in p:
-            if c.area > c2:
-                c1 = c
-                c2 = c.area
-        p = c1
+    p = shapely_ensure_polygon_list(p)
+    # 保留最大面积的
+    c1 = None
+    c2 = -np.inf
+    for c in p:
+        if c.area > c2:
+            c1 = c
+            c2 = c.area
+    p = c1
     return p
 
 
@@ -571,10 +618,7 @@ def shapely_merge_multi_contours(polygons: List[Polygon]):
     :return:
     '''
     mps = unary_union(polygons)
-    if isinstance(mps, Polygon):
-        mps = [mps]
-    else:
-        mps = list(mps)
+    mps = shapely_ensure_polygon_list(mps)
     return mps
 
 
@@ -618,11 +662,9 @@ def shapely_inter_contours_1toN(c1: Polygon, batch_c: List[Polygon]):
     for c in batch_c:
         if c1.intersects(c):
             inter = c1.intersection(c)
+            inter = shapely_ensure_polygon_list(inter)
             # 排除inter不是多边形或多个多边形的情况
-            if isinstance(inter, Polygon):
-                cs.append(inter)
-            elif isinstance(inter, MultiPolygon):
-                cs.extend(list(inter))
+            cs.extend(inter)
     cs = shapely_merge_multi_contours(cs)
     return cs
 
@@ -652,11 +694,7 @@ def shapely_morphology_contour(contour: Polygon, distance, resolution=16):
     :return:
     '''
     out_c = contour.buffer(distance=distance, resolution=resolution)
-    if isinstance(out_c, MultiPolygon):
-        out_c = list(out_c)
-    else:
-        assert isinstance(out_c, Polygon)
-        out_c = [out_c]
+    out_c = shapely_ensure_polygon_list(out_c)
     out_c = [c for c in out_c if c.exterior is not None]
     return out_c
 
@@ -673,6 +711,7 @@ def morphology_contour(contour: np.ndarray, distance, resolution=16):
     '''
     c = tr_my_to_polygon([contour])[0]
     out_cs = shapely_morphology_contour(c, distance, resolution)
+    out_cs = [c for c in out_cs if not c.is_empty]
     out_cs = tr_polygons_to_my(out_cs, contour.dtype)
     return out_cs
 
@@ -709,6 +748,71 @@ def is_contours_too_close_border(contours, hw, factor):
     return ids
 
 
+def check_points_in_contour(points, contour):
+    '''
+    检查点集是否在轮廓内，大于0代表在轮廓内部，等于0代表在轮廓边上，小于0代表在多边形外部
+    :param points:  点列表，[N, yx]
+    :param contour: 单个轮廓，我的格式
+    :return: bools
+    '''
+    points = np.float32(points)
+    bs = np.zeros(len(points), np.int8)
+    c = tr_my_to_cv_contours([contour])[0]
+    for i, pt in enumerate(points[:, ::-1]):
+        bs[i] = cv2.pointPolygonTest(c, pt, False)
+    return bs
+
+
+def check_point_in_contours(point, contours):
+    '''
+    检查点集是否在轮廓内，大于0代表在轮廓内部，等于0代表在轮廓边上，小于0代表在多边形外部
+    :param points:  单个点，[yx]
+    :param contour: 轮廓列表，我的格式
+    :return: bools
+    '''
+    point = np.float32(point)
+    bs = np.zeros(len(points), np.int8)
+    cs = tr_my_to_cv_contours(contours)
+    pt = point[::-1]
+    for i, c in enumerate(cs):
+        bs[i] = cv2.pointPolygonTest(c, pt, False)
+    return bs
+
+
+def check_point_in_contour(point, contour):
+    '''
+    检查点集是否在轮廓内，大于0代表在轮廓内部，等于0代表在轮廓边上，小于0代表在多边形外部
+    :param points:  单个点，[yx]
+    :param contour: 单个轮廓，我的格式
+    :return: bools
+    '''
+    point = np.float32(point)
+    c = tr_my_to_cv_contours([contour])[0]
+    pt = point[::-1]
+    return cv2.pointPolygonTest(c, pt, False)
+
+
+def calc_dice_contours(contours1, contours2, *, return_area=False):
+    '''
+    计算两个轮廓组间的Dice
+    :param contours1: 轮廓组，我的格式
+    :param contours2: 轮廓组，我的格式
+    :return:
+    '''
+    overlap_conts = []
+    for c in contours1:
+        overlap_conts.extend(inter_contours_1toN(c, contours2))
+    overlap_area = np.sum([calc_contour_area(c) for c in overlap_conts])
+    pred_area = np.sum([calc_contour_area(c) for c in contours1])
+    label_area = np.sum([calc_contour_area(c) for c in contours2])
+    dice = 2 * overlap_area / max(pred_area + label_area, 1e-8)
+
+    if return_area:
+        return dice, overlap_area, pred_area, label_area
+    else:
+        return dice
+
+
 def apply_affine_to_contours(contours, M):
     '''
     对多个轮廓进行仿射变换
@@ -720,6 +824,25 @@ def apply_affine_to_contours(contours, M):
     for cont in contours:
         new_conts.append(point_tool.apply_affine_to_points(cont, M))
     return new_conts
+
+
+def get_contours_shortest_link_pair(contours1, contours2, iou_th: float, *, pair_ious=None):
+    '''
+    求两组轮廓之间最大IOU配对
+    :param contours1:   轮廓组1
+    :param contours2:   轮廓组2
+    :param iou_th:      iou阈值
+    :param pair_ious:   如果已有现成的配对iou表，则使用现成的，可以省去生成配对表的时间
+    :return: 返回轮廓的编号和他们的IOU
+    '''
+
+    if pair_ious is None:
+        pair_ious = calc_iou_with_contours_NtoM(contours1, contours2)
+    else:
+        assert pair_ious.shape == (len(contours1), len(contours2)), 'Error! Bad param pair_ious.'
+
+    out_contact_ids1, out_contact_ids2, out_contact_iou = universal_get_shortest_link_pair(pair_ious, iou_th, np.greater)
+    return out_contact_ids1, out_contact_ids2, out_contact_iou
     
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ import numpy as np
 import os
 import cv2
 from skimage.transform import resize as sk_resize
+from scipy import ndimage
 from PIL import Image, ImageDraw, ImageFont
 from typing import Union, Tuple, Iterable
 
@@ -479,6 +480,40 @@ def show_hm_on_image(img: np.ndarray,
     oim = img * (1-alpha) + color_hm * alpha
     oim = np.uint8(np.round(oim).clip(0, 255))
     return oim
+
+
+def smooth_map(size, p=None):
+    '''
+    生成一个任意维度的居中平滑图
+    :param size:维度大小，例如 [512, 512]
+    :param p:   次方参数，默认为None，效果等于p=1
+    :return:
+    '''
+    size = np.array(size)
+    v = np.zeros([3]*len(size), dtype=np.float32)
+    v.__setitem__((1,)*len(size), 1)
+    v = ndimage.zoom(v, size/v.shape, order=1)
+    if p is not None:
+        v = np.power(v, p)
+    return v
+
+
+def imwrite_webp(p, im, quality=101):
+    '''
+    写入图像为webp格式，opencv
+    :param p:       输出路径
+    :param im:      保存的图像，要求为 灰度图，RGB颜色图或RGBA颜色图
+    :param quality: 保存的质量，[0-101]，101代表为无损
+    :return:
+    '''
+    assert os.path.splitext(p)[1].lower() == '.webp', 'Error! Not a webp path.'
+    if im.ndim == 3:
+        if im.shape[-1] == 3:
+            im = cv2.cvtColor(im, cv2.COLOR_RGB2BGR)
+        elif im.shape[-1] == 4:
+            im = cv2.cvtColor(im, cv2.COLOR_RGBA2BGRA)
+    return cv2.imwrite(p, im, [cv2.IMWRITE_WEBP_QUALITY, quality])
+
 
 
 def test():

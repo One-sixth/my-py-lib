@@ -325,3 +325,19 @@ def make_bbox_by_center_point(center_yx, bbox_hw: Union[int, float, Sized], dtyp
     bbox_hw = np.asarray(bbox_hw, np.float32) / 2
 
     return np.asarray([center_yx[0] - bbox_hw[0], center_yx[1] - bbox_hw[1], center_yx[0] + bbox_hw[0], center_yx[1] + bbox_hw[1]], dtype=dtype)
+
+
+def _is_points_in_bboxes_1to1_or_1toN_or_Nto1(points, bboxes):
+    '''
+    点是否在包围盒内部
+    :param points:
+    :param bboxes:
+    :return:
+    '''
+    b = np.logical_and(np.all(points > bbox[..., :2], 1), np.all(points < bbox[..., 2:], 1))
+    return b
+
+
+is_points_in_bbox = _is_points_in_bboxes_1to1_or_1toN_or_Nto1
+is_point_in_bboxes = _is_points_in_bboxes_1to1_or_1toN_or_Nto1
+is_point_in_bbox = _is_points_in_bboxes_1to1_or_1toN_or_Nto1
