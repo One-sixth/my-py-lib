@@ -1,7 +1,7 @@
 '''
 图像处理辅助库，作为 scikit-image 和 opencv 辅助用，非替代
 '''
-
+import warnings
 from typing import Iterable
 import imageio
 import numpy as np
@@ -485,11 +485,14 @@ def show_hm_on_image(img: np.ndarray,
 def smooth_map(size, p=None):
     '''
     生成一个任意维度的居中平滑图
+    注意：任意维度大小如果小于3，会导致全图均为0值。
     :param size:维度大小，例如 [512, 512]
     :param p:   次方参数，默认为None，效果等于p=1
     :return:
     '''
     size = np.array(size)
+    if np.min(size) < 3:
+        warnings.warn(f'Warning! Found some dim size less than 3. It will cause return full zero array. {size=}')
     v = np.zeros([3]*len(size), dtype=np.float32)
     v.__setitem__((1,)*len(size), 1)
     v = ndimage.zoom(v, size/v.shape, order=1)
