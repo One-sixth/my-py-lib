@@ -70,7 +70,7 @@ def process_param_colors_rgb(colors):
 
 def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, name: str = 'scatter',
                     fig=None, ax=None, subplot=111, figsize=(8.00, 8.00), dpi=100, title=None,
-                    xlabel=None, ylabel=None, legend=False,
+                    xlabel=None, ylabel=None, legend=False, tight_layout=False,
                     return_pic=False):
     '''
     绘制散点图
@@ -88,6 +88,7 @@ def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, n
     :param xlabel:      若为str，则绘制x坐标轴名字，若为其他，则忽略
     :param ylabel:      若为str，则绘制y坐标轴名字，若为其他，则忽略
     :param legend:      是否绘制图例
+    :param tight_layout:是否自动优化布局
     :param return_pic:  是否额外返回绘制好的图像数组
     :return:
     '''
@@ -153,6 +154,10 @@ def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, n
             ax.legend(loc='upper left', bbox_to_anchor=(1.01,1), borderaxespad=0)   # 图例从右上角开始，图外
         elif isinstance(legend, dict):
             ax.legend(**legend)
+
+    # 是否使用自动调整布局
+    if tight_layout:
+        fig.tight_layout()
 
     r = (fig, ax)
     # 是否返回图像
