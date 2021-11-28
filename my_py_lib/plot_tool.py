@@ -69,7 +69,7 @@ def process_param_colors_rgb(colors):
 
 
 def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, name: str = 'scatter',
-                    fig=None, ax=None, subplot=111, figsize=(7.68, 7.68), dpi=100, title=None,
+                    fig=None, ax=None, subplot=111, figsize=(8.00, 8.00), dpi=100, title=None,
                     xlabel=None, ylabel=None, legend=False,
                     return_pic=False):
     '''
@@ -147,7 +147,12 @@ def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, n
 
     # 检查图例
     if legend is not None:
-        ax.legend(loc='upper right')
+        if legend is True:
+            # ax.legend(loc='upper right')  # 图例放在左上角，图内
+            # ax.legend(loc=(1, 0))         # 图例从右下角开始，图外
+            ax.legend(loc='upper left', bbox_to_anchor=(1.01,1), borderaxespad=0)   # 图例从右上角开始，图外
+        elif isinstance(legend, dict):
+            ax.legend(**legend)
 
     r = (fig, ax)
     # 是否返回图像
