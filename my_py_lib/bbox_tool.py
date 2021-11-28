@@ -6,6 +6,10 @@
 
 import numpy as np
 from typing import Sized, Union
+try:
+    from .numpy_tool import universal_get_shortest_link_pair
+except ImportError:
+    from numpy_tool import universal_get_shortest_link_pair
 
 
 def check_bbox_or_bboxes(bbox_or_bboxes):
@@ -218,7 +222,7 @@ def calc_bbox_occupancy_ratio_1to1(bbox1, bbox2):
     return ratio
 
 
-def calc_bbox_iou_1toN_or_Nto1(bboxes1: np.ndarray, bboxes2: np.ndarray):
+def _calc_bbox_iou_1to1_or_1toN_or_Nto1(bboxes1: np.ndarray, bboxes2: np.ndarray):
     '''
     计算N对个包围框的IOU，注意这里一一对应的，同时下面使用了...技巧，使其同时支持 1对1，1对N，N对1 的IOU计算
     注意不支持 N对M 的计算
@@ -256,7 +260,22 @@ def calc_bbox_iou_1toN(bbox1: np.ndarray, bboxes: np.ndarray):
     '''
     check_bbox(bbox1)
     check_bboxes(bboxes)
-    return calc_bbox_iou_1toN_or_Nto1(bbox1, bboxes)
+    return _calc_bbox_iou_1to1_or_1toN_or_Nto1(bbox1, bboxes)
+
+
+def calc_bbox_iou_NtoM(bboxes1: np.ndarray, bboxes2: np.ndarray):
+    '''
+    计算 包围框组N与包围框组M两两之间 的 IOU
+    :param bboxes1:
+    :param bboxes2:
+    :return:
+    '''
+    check_bboxes(bboxes1)
+    check_bboxes(bboxes2)
+    pair_ious = np.zeros([len(bboxes1), len(bboxes2)], np.float32)
+    for i in range(len(bboxes1)):
+        pair_ious[i] = _calc_bbox_iou_1to1_or_1toN_or_Nto1(bboxes1[i], bboxes2)
+    return pair_ious
 
 
 def pad_bbox_to_square(bbox: np.ndarray):
@@ -334,10 +353,29 @@ def _is_points_in_bboxes_1to1_or_1toN_or_Nto1(points, bboxes):
     :param bboxes:
     :return:
     '''
-    b = np.logical_and(np.all(points > bbox[..., :2], 1), np.all(points < bbox[..., 2:], 1))
+    b = np.logical_and(np.all(points > bboxes[..., :2], 1), np.all(points < bboxes[..., 2:], 1))
     return b
 
 
 is_points_in_bbox = _is_points_in_bboxes_1to1_or_1toN_or_Nto1
 is_point_in_bboxes = _is_points_in_bboxes_1to1_or_1toN_or_Nto1
 is_point_in_bbox = _is_points_in_bboxes_1to1_or_1toN_or_Nto1
+
+
+def get_bboxes_shortest_link_pair(bboxes1, bboxes2, iou_th: float, *, pair_ious=None):
+    '''
+    求两组包围框之间最大IOU配对
+    :param bboxes1:     包围框组1
+    :param bboxes2:     包围框组2
+    :param iou_th:      iou阈值
+    :param pair_ious:   如果已有现成的配对IOU表，则使用现成的，可以省去生成IOU表的时间。IOU表 可用 calc_iou_with_contours_NtoM 函数生成
+    :return: 返回轮廓的编号和他们的IOU
+    '''
+
+    if pair_ious is None:
+        pair_ious = calc_bbox_iou_NtoM(bboxes1, bboxes2)
+    else:
+        assert pair_ious.shape == (len(bboxes1), len(bboxes2)), 'Error! Bad param pair_ious.'
+
+    out_contact_ids1, out_contact_ids2, out_contact_iou = universal_get_shortest_link_pair(pair_ious, iou_th, np.greater)
+    return out_contact_ids1, out_contact_ids2, out_contact_iou
