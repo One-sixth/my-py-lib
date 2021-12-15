@@ -127,6 +127,32 @@ def tr_polygons_to_cv(polygons: List[Polygon], dtype=np.float32):
     return cv_contours
 
 
+def tr_my_to_linering(my_contours):
+    '''
+    轮廓格式转换，转换我的格式到linering
+    :param my_contours:
+    :return:
+    '''
+    ps = tr_my_to_polygon(my_contours)
+    linerings = [p.exterior for p in ps]
+    return linerings
+
+
+def tr_linering_to_my(linerings: List[LineString], dtype=np.float32):
+    '''
+    轮廓格式转换，转换linering到我的格式
+    :param my_contours:
+    :return:
+    '''
+    cs = []
+    for lr in linerings:
+        xs = np.asarray(lr.xy[0].tolist(), dtype=dtype)
+        ys = np.asarray(lr.xy[1].tolist(), dtype=dtype)
+        c = np.stack([ys, xs], 1)
+        cs.append(c)
+    return cs
+
+
 def shapely_ensure_polygon_list(ps):
     '''
     确保返回值是 List[Polygon]
@@ -275,15 +301,64 @@ def calc_convex_contours(coutours):
     return new_coutours
 
 
-def shapely_calc_distance_contour(polygon1: Polygon, polygon2: Polygon):
+def shapely_calc_distance_polygon(polygon1: Polygon, polygon2: Polygon):
     '''
     求俩个轮廓的最小距离，原型
+    如果一个轮廓与另一个轮廓相交或在其内部，距离将为0
+    :param polygon1: 多边形1
+    :param polygon2: 多边形2
+    :return: 轮廓距离
+    '''
+    assert isinstance(polygon1, Polygon)
+    assert isinstance(polygon2, Polygon)
+    l = polygon1.distance(polygon2)
+    return l
+
+
+def shapely_calc_distance_linering(linering1: LineString, linering2: LineString):
+    '''
+    求俩个线环的最小距离，原型
+    如果线环在另外一个线环的内部，但不相交，此时返回它们的最接近点的距离，而不是返回0
     :param polygon1: 多边形1
     :param polygon2: 多边形2
     :return: 轮廓面积
     '''
-    l = polygon1.distance(polygon2)
+    assert isinstance(linering1, LineString)
+    assert isinstance(linering2, LineString)
+    l = linering1.distance(linering2)
     return l
+
+
+def calc_distance_polygon_1toN(cont1: np.ndarray, conts: list):
+    '''
+    求俩个轮廓的最小距离
+    如果一个轮廓与另一个轮廓相交或在其内部，距离将为0
+    :param cont1: 轮廓1，我的格式
+    :param conts: 轮廓组
+    :return: 轮廓距离
+    '''
+    p1 = tr_my_to_polygon([cont1])[0]
+    ps = tr_my_to_polygon(conts)
+    ds = np.zeros([len(conts)], np.float32)
+    for i, p in enumerate(ps):
+        ds[i] = shapely_calc_distance_polygon(p1, p)
+    return ds
+
+
+def calc_distance_linering_1toN(cont1: np.ndarray, conts: list):
+    '''
+    求俩个线环的最小距离
+    如果线环在另外一个线环的内部，但不相交，此时返回它们的最接近点的距离，而不是返回0
+    :param cont1: 轮廓1，我的格式
+    :param conts: 轮廓组
+    :return: 轮廓面积
+    '''
+    r1 = tr_my_to_linering([cont1])[0]
+    rs = tr_my_to_linering(conts)
+    ds = np.zeros([len(conts)], np.float32)
+    for i, r in enumerate(rs):
+        ds[i] = shapely_calc_distance_linering(r1, r)
+    return ds
 
 
 # def calc_iou_with_two_contours(contour1, contour2, max_test_area_hw=(512, 512)):

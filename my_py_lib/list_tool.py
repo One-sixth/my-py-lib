@@ -29,14 +29,6 @@ def list_multi_set_with_bool(self: list, bools: Iterable, items: Iterable):
         self[i] = item
 
 
-def list_bool_to_ids(self: Iterable):
-    ids = []
-    for i, it in enumerate(self):
-        if it == True:
-            ids.append(i)
-    return ids
-
-
 def int_list(self: Iterable):
     return [int(i) for i in self]
 
@@ -88,6 +80,43 @@ def list_group_by_classes(self: Iterable, classes: Iterable):
     return d
 
 
+def list_bools_to_ids(bools):
+    ids = []
+    for i, b in enumerate(bools):
+        if b:
+            ids.append(i)
+    return ids
+
+
+def list_del_items_with_ids(self: list, ids: Iterable):
+    for i in sorted(ids, reverse=True):
+        del self[i]
+    return self
+
+
+def list_del_items_with_bools(self: list, bools: Iterable):
+    assert len(self) == len(bools)
+    ids = list_bools_to_ids(bools)
+    list_del_items_with_ids(self, ids)
+    return self
+
+
+def list_pop_items_with_ids(self: list, ids: Iterable):
+    items = []
+    for i in ids:
+        items.append(self[i])
+
+    list_del_items_with_ids(self, ids)
+    return items
+
+
+def list_pop_items_with_bools(self: list, bools: Iterable):
+    assert len(self) == len(bools)
+    ids = list_bools_to_ids(bools)
+    items = list_pop_items_with_ids(self, ids)
+    return items
+
+
 if __name__ == '__main__':
     a = [1, 2, 3, 4, 5, 6]
     b = list_multi_get_with_ids(a, [0, 2, 4])
@@ -102,9 +131,6 @@ if __name__ == '__main__':
     list_multi_set_with_bool(a, [True, False, True, False, False, False], [1, 3])
     assert a[0] == 1 and a[2] == 3
 
-    d = list_bool_to_ids([True, False, True, False, False, False])
-    assert len(d) == 2 and d[0] == 0 and d[1] == 2
-
     b = list_split_by_size(a, 4)
     assert b == [[1, 2, 3, 4], [5, 6]]
 
@@ -113,3 +139,23 @@ if __name__ == '__main__':
 
     b = list_group_by_classes(a, [1, 1, 2, 2, 3, 3])
     assert b == {1: [1, 2], 2: [3, 4], 3: [5, 6]}
+
+    a2 = [False, True, False, True]
+    b = list_bools_to_ids(a2)
+    assert b == [1, 3]
+
+    a2 = [1,2,3,4,5,6]
+    b = list_del_items_with_ids(a2, [4,2,5])
+    assert a2 == [1, 2, 4] == b
+
+    a2 = [1,2,3,4,5,6]
+    b = list_del_items_with_bools(a2, [False, False, True, False, True, False])
+    assert a2 == [1, 2, 4, 6] == b
+
+    a2 = [1,2,3,4,5,6]
+    b = list_pop_items_with_ids(a2, [4,2,5])
+    assert a2 == [1, 2, 4] and b == [5, 3, 6]
+
+    a2 = [1,2,3,4,5,6]
+    b = list_pop_items_with_bools(a2, [False, False, True, False, True, False])
+    assert a2 == [1, 2, 4, 6] and b == [3, 5]

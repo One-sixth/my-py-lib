@@ -13,8 +13,6 @@ def calc_contour_score(pred_contours, pred_classes, label_contours, label_classe
                        match_iou_thresh_list=(0.3, 0.5, 0.7),
                        use_single_pair=False, *, return_lookup_table=True):
     '''
-    注意，当前评估是非完美配对，特定情况下受轮廓顺序影响
-
     通用轮廓评估
     将会返回一个分数字典
     当预测与标签距离小于评估距离时，将会认定为真阳性
