@@ -27,10 +27,10 @@ import numpy as np
 from typing import Tuple
 
 
-TYPE_CONTOUR =  0   # 原始格式：[pt1_xy, pt2_xy, pt3_xy, ...]
-TYPE_BOX =      1   # 原始格式：[pt_lt, pt_rt, pt_rb, pt_rl]
-TYPE_ELLIPSE =  2   # 原始格式：[[x1, y1], [x2, y2]]
-TYPE_ARROW =    3   # 原始格式：[hear_xy, tail_xy]
+TYPE_CONTOUR =  0   # 单个格式：[pt1_yx, pt2_yx, pt3_yx, ...]
+TYPE_BOX =      1   # 单个格式：[pt_tl_yx, pt_tr_yx, pt_br_yx, pt_bl_yx]
+TYPE_ELLIPSE =  2   # 单个格式：[[y1, x1], [y2, x2]]
+TYPE_ARROW =    3   # 单个格式：[hear_yx, tail_yx] 或 hear_yx
 
 
 def color_int_to_tuple(color_int):
