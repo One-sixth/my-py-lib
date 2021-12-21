@@ -88,16 +88,18 @@ def list_bools_to_ids(bools):
     return ids
 
 
-def list_del_items_with_ids(self: list, ids: Iterable):
+def list_del_items_with_ids(self: list, ids: Iterable, copy=False):
+    if copy:
+        self = self.copy()
     for i in sorted(ids, reverse=True):
         del self[i]
     return self
 
 
-def list_del_items_with_bools(self: list, bools: Iterable):
+def list_del_items_with_bools(self: list, bools: Iterable, copy=False):
     assert len(self) == len(bools)
     ids = list_bools_to_ids(bools)
-    list_del_items_with_ids(self, ids)
+    list_del_items_with_ids(self, ids, copy)
     return self
 
 

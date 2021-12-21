@@ -289,6 +289,17 @@ def calc_contour_area(contour: np.ndarray):
     return area
 
 
+def calc_contours_area(contours: np.ndarray):
+    '''
+    求一组轮廓的面积
+    :param contours: 输入一组轮廓
+    :return:
+    '''
+    cs = tr_my_to_cv_contours(contours)
+    areas = [cv2.contourArea(c) for c in cs]
+    return areas
+
+
 def calc_convex_contours(coutours):
     '''
     计算一组轮廓的凸壳轮廓，很多时候可以加速。
