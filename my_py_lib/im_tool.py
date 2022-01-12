@@ -518,6 +518,44 @@ def imwrite_webp(p, im, quality=101):
     return cv2.imwrite(p, im, [cv2.IMWRITE_WEBP_QUALITY, quality])
 
 
+def im_encode(ext: str, im: np.ndarray, params=None):
+    '''
+    编码图像，opencv imencode 包装
+    :param ext:     要编码的类型，例如 '.jpg'
+    :param im:      要编码的图像，要求为 灰度图，RGB颜色图或RGBA颜色图
+    :param params:  编码参数
+    :return:
+    '''
+    if im.ndim == 3:
+        if im.shape[-1] == 3:
+            im = cv2.cvtColor(im, cv2.COLOR_RGB2BGR)
+        elif im.shape[-1] == 4:
+            im = cv2.cvtColor(im, cv2.COLOR_RGBA2BGRA)
+    r, data = cv2.imencode(ext, im, params=params)
+    if not r:
+        raise RuntimeError('Error! Image encode failure.')
+    return data
+
+
+def im_decode(im_data: Union[bytes, np.ndarray]):
+    '''
+    解码图像，opencv imdecode 包装
+    :param im_data: 要解码的字节流
+    :return:
+    '''
+    if isinstance(im_data, bytes):
+        im_data = np.frombuffer(im_data, dtype=np.uint8)
+    assert im_data.dtype == np.uint8
+    im = cv2.imdecode((im_data), -1)
+    if im is None:
+        raise RuntimeError('Error! Image data decode failure.')
+    if im.ndim == 3:
+        if im.shape[-1] == 3:
+            im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        elif im.shape[-1] == 4:
+            im = cv2.cvtColor(im, cv2.COLOR_BGRA2RGBA)
+    return im
+
 
 def test():
     mod_dir = os.path.dirname(__file__)
