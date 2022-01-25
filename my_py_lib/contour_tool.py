@@ -824,7 +824,7 @@ def check_point_in_contours(point, contours):
     :return: bools
     '''
     point = np.float32(point)
-    bs = np.zeros(len(points), np.int8)
+    bs = np.zeros(len(contours), np.int8)
     cs = tr_my_to_cv_contours(contours)
     pt = point[::-1]
     for i, c in enumerate(cs):

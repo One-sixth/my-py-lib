@@ -67,6 +67,9 @@ class ImageOverScanWrapper:
         real_yx_start = np.clip(yx_start, [0, 0], None)
         real_yx_end = np.clip(yx_end, None, pr.shape[:2])
 
+        if any(np.int32(real_yx_end) - np.int32(real_yx_start) < 1):
+            return
+
         pr: np.ndarray = pr[real_yx_start[0]: real_yx_end[0], real_yx_start[1]: real_yx_end[1]]
 
         top, left = real_yx_start - yx_start

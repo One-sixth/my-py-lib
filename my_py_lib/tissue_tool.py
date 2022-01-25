@@ -28,7 +28,7 @@ def get_tissue_contours(im, gray_thresh=210, area_thresh=0.005, *, debug_show=Fa
     # tim = (gim < gray_thresh).astype(np.uint8)
 
     if debug_show:
-        cv2.imshow('get_tissue_ori', im)
+        cv2.imshow('get_tissue_ori', im[..., ::-1])
         # cv2.imshow('get_tissue_gim', gim)
         cv2.imshow('get_tissue_tim', tim*255)
         cv2.imshow('get_tissue_tim1', tim1*255)

@@ -186,6 +186,29 @@ def crop_picture(img, width, height):
     return img
 
 
+def crop_image_by_inner_border(img: np.ndarray, top: int, left: int, bottom: int, right: int):
+    """
+    根据图像边缘，向内裁剪
+    要求裁剪后图像的宽高至少有1像素
+    裁剪像素必须是非负整数
+    :param img: input numpy array
+    :param top:
+    :param bottom:
+    :param left:
+    :param right:
+    :return: output numpy array
+    """
+    assert img.ndim in [2, 3]
+    ori_h, ori_w = img.shape[:2]
+    assert top >= 0 and bottom >= 0 and left >= 0 and right >= 0
+    assert top + bottom < ori_h
+    assert left + right < ori_w
+    end_y = ori_h - bottom
+    end_x = ori_w - right
+    new_img =  img[top: end_y, left: end_x]
+    return img
+
+
 # put_text需要指定字体，设定默认字体
 _default_font_path = os.path.join(os.path.dirname(__file__), 'SourceHanSansCN-Regular.otf')
 
