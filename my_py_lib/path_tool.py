@@ -66,5 +66,5 @@ def replace_extname(p, s):
     :return:
     '''
     dir_path, basename, extname = split_file_path(p)
-    o = dir_path + basename + s
+    o = dir_path + '/' + basename + s
     return o
