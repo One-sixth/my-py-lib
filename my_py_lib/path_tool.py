@@ -3,6 +3,7 @@
 为了处理麻烦的路径名称问题
 '''
 import os
+import sys
 
 
 def split_file_path(p, base_dir=None):
@@ -68,3 +69,17 @@ def replace_extname(p, s):
     dir_path, basename, extname = split_file_path(p)
     o = dir_path + '/' + basename + s
     return o
+
+
+def get_home_dir():
+    '''
+    获得当前用户家目录，支持windows，linux和macosx
+    :return:
+    '''
+    if sys.platform == 'win32':
+        homedir = os.environ['USERPROFILE']
+    elif sys.platform == 'linux' or sys.platform == 'darwin':
+        homedir = os.environ['HOME']
+    else:
+        raise NotImplemented(f'Error! Not this system. {sys.platform}')
+    return homedir
