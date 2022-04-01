@@ -169,7 +169,7 @@ class NdArrayOverScanWrapper:
                     start = 0
 
                 # 仅支持1步长
-                assert step is None or step == 1, 'Error! Not support step==1.'
+                assert step is None or step == 1, 'Error! Only support step==1.'
                 assert cur_value_dim == stop - start, 'Error! Value size is not equal slice.'
 
                 if stop < 0:

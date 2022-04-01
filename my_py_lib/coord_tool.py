@@ -100,6 +100,9 @@ def xywh_to_x1y1x2y2(coord_or_coords):
     return x1y1x2y2
 
 
+yxhw_to_y1x1y2x2 = xywh_to_x1y1x2y2
+
+
 def x1y1x2y2_to_xywh(coord_or_coords):
     """Convert one coordinate [x1, y1, x2, y2] to [x_center, y_center, w, h].
     It is the reverse process of ``obj_box_coord_centroid_to_upleft_butright``.
@@ -117,6 +120,9 @@ def x1y1x2y2_to_xywh(coord_or_coords):
     xy = coord_or_coords[..., :2] + wh / 2
     xywh = np.concatenate([xy, wh], -1)
     return xywh
+
+
+y1x1y2x2_to_yxhw = x1y1x2y2_to_xywh
 
 
 def xywh_to_x1y1wh(coord_or_coords):
@@ -137,6 +143,9 @@ def xywh_to_x1y1wh(coord_or_coords):
     return coord_or_coords
 
 
+yxhw_to_y1x1hw = xywh_to_x1y1wh
+
+
 def x1y1wh_to_xywh(coord_or_coords):
     """
     Convert one coordinate [x, y, w, h] to [x_center, y_center, w, h].
@@ -153,6 +162,9 @@ def x1y1wh_to_xywh(coord_or_coords):
     coord_or_coords = np.asarray(coord_or_coords)
     coord_or_coords[..., :2] = coord_or_coords[..., :2] + coord_or_coords[..., 2:] / 2
     return coord_or_coords
+
+
+y1x1hw_to_yxhw = x1y1wh_to_xywh
 
 
 if __name__ == '__main__':

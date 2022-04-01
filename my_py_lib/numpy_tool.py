@@ -54,13 +54,16 @@ def tr_figure_to_array(fig):
     return im
 
 
-def round_int32(x):
+def round_int(x, dtype=np.int32):
     '''
-    把一个数字变成int32
+    把一个数字变成整数
     :param x:
     :return:
     '''
-    return np.int32(np.round(x))
+    return np.asarray(np.round(x), dtype=dtype)
+
+
+round_int32 = round_int
 
 
 def universal_get_shortest_link_pair(dist_table: np.ndarray, dist_th, compare_op=np.less):

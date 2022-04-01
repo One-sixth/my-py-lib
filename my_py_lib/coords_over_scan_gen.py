@@ -28,7 +28,7 @@ def n_step_scan_coords_gen(im_hw=(512, 512), window_hw=(128, 128), n_step: int=2
             yield yx_start, yx_end
 
 
-def n_step_scan_coords_gen_v2(im_hw=(512, 512), window_hw=(128, 128), n_step: float=1.):
+def n_step_scan_coords_gen_v2(im_hw=(512, 512), window_hw=(128, 128), n_step: float=1., start_offset=None):
     '''
     N步长坐标生成器，支持小数步长，可以生成滑动框左上角和右下角坐标，便于快速遍历图像
     例如窗口大小设定为[128,128]，设定为0.5步长时，代表步长为[64,64]，设定为2步长时，代表步长为[256,256]
@@ -45,6 +45,13 @@ def n_step_scan_coords_gen_v2(im_hw=(512, 512), window_hw=(128, 128), n_step: fl
     y_end = im_hw[0]
     x_start = 0 - window_hw[1] + step_hw[1]
     x_end = im_hw[1]
+
+    if start_offset is not None:
+        assert len(start_offset) == 2
+        y_start += int(start_offset[0])
+        x_start += int(start_offset[1])
+        y_end += int(start_offset[0])
+        x_end += int(start_offset[1])
 
     for y in range(y_start, y_end, step_hw[0]):
         for x in range(x_start, x_end, step_hw[1]):

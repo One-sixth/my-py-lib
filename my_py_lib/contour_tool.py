@@ -835,9 +835,9 @@ def check_point_in_contours(point, contours):
 def check_point_in_contour(point, contour):
     '''
     检查点集是否在轮廓内，大于0代表在轮廓内部，等于0代表在轮廓边上，小于0代表在多边形外部
-    :param points:  单个点，[yx]
+    :param point:  单个点，[yx]
     :param contour: 单个轮廓，我的格式
-    :return: bools
+    :return: bool
     '''
     point = np.float32(point)
     c = tr_my_to_cv_contours([contour])[0]
