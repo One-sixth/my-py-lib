@@ -100,11 +100,12 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
     :param bim:         大图像，允许为 OpenSlide 或 TiffSlide
     :param ds_level:    指定层级
     :param thumb_size:  缩略图最长边的长度
-    :return: 
+    :param tile_hw:     采样时图块大小
+    :return:
     '''
 
-    level_hw = bim.level_dimensions[ds_level]
-    factor = np.max(thumb_size / np.float32(level_hw))
+    level_hw = bim.level_dimensions[ds_level][::-1]
+    factor = np.min(thumb_size / np.float32(level_hw))
 
     thumb_hw = round_int(np.float32(level_hw) * factor)
 
