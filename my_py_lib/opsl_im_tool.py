@@ -103,8 +103,11 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
     :param tile_hw:     采样时图块大小
     :return:
     '''
+    lv0_hw = bim.level_dimensions[0][::-1]
 
     level_hw = bim.level_dimensions[ds_level][::-1]
+
+    to_lv0_factor = lv0_hw / np.float32(level_hw)
     factor = np.min(thumb_size / np.float32(level_hw))
 
     thumb_hw = round_int(np.float32(level_hw) * factor)
@@ -114,7 +117,9 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
 
     for yx_start, yx_end in coords_over_scan_gen.n_step_scan_coords_gen_v2(level_hw, window_hw=tile_hw, n_step=1):
 
-        tile = bim.read_region(yx_start[::-1], ds_level, tile_hw[::-1], as_array=True)
+        lv0_pos = round_int(yx_start[::-1] * to_lv0_factor)
+
+        tile = np.asarray(bim.read_region(lv0_pos, ds_level, tile_hw[::-1]))[..., :3]
 
         yx_start = round_int(np.float32(yx_start) * factor)
         yx_end = round_int(np.float32(yx_end) * factor)
@@ -122,7 +127,7 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
         new_hw = yx_end - yx_start
 
         try:
-            tile = im_tool.resize_image(tile, new_hw)
+            tile = im_tool.resize_image(tile, new_hw, interpolation=cv2.INTER_AREA)
         except:
             continue
 

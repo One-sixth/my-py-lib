@@ -66,6 +66,15 @@ def round_int(x, dtype=np.int32):
 round_int32 = round_int
 
 
+def ceil_int(x, dtype=np.int32):
+    '''
+    把一个数字变成整数
+    :param x:
+    :return:
+    '''
+    return np.asarray(np.ceil(x), dtype=dtype)
+
+
 def universal_get_shortest_link_pair(dist_table: np.ndarray, dist_th, compare_op=np.less):
     '''
     通用函数，根据距离表得到最短链匹配ID
