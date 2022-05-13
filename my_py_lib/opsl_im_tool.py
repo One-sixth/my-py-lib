@@ -91,7 +91,7 @@ opsl_read_region_any_ds = read_region_any_ds
 
 
 def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
-                         ds_level,
+                         ds_level=0,
                          thumb_size=2048,
                          tile_hw=(512, 512),
                          ):

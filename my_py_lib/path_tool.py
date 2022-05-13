@@ -2,8 +2,10 @@
 路径工具
 为了处理麻烦的路径名称问题
 '''
+import glob
 import os
 import sys
+from typing import Union
 
 
 def split_file_path(p, base_dir=None):
@@ -28,10 +30,14 @@ def split_file_path(p, base_dir=None):
     basename, extname = os.path.splitext(name)
 
     if base_dir is None:
+        if dir_path == '':
+            dir_path = '.'
         return dir_path, basename, extname
 
     assert dir_path.startswith(base_dir), f'Error! dir_path:{dir_path} must be startwith base_dir:{base_dir}'
     dir_path = dir_path.removeprefix(base_dir)
+    if dir_path == '':
+        dir_path = '.'
     return base_dir, dir_path, basename, extname
 
 
@@ -83,3 +89,55 @@ def get_home_dir():
     else:
         raise NotImplemented(f'Error! Not this system. {sys.platform}')
     return homedir
+
+
+def find_file_by_exts(dirs: Union[list[str], str], exts: Union[list[str], str], recursive=True, replace_backslash=False):
+    '''
+    检索目录内所有符合要求后缀名的文件
+    :param dirs:                可以输入一个或一组文件夹
+    :param exts:                可以输入一个或一组后缀名
+    :param recursive:           是否检索子文件夹
+    :param replace_backslash:   是否自动转换反斜杠到斜杠
+    :return:
+    '''
+    if isinstance(dirs, str):
+        dirs = [dirs]
+    if isinstance(exts, str):
+        exts = [exts]
+
+    files = []
+    for dir in dirs:
+        for file in glob.glob(f'{dir}/**/*', recursive=recursive):
+            if os.path.splitext(file)[1] in exts and os.path.isfile(file):
+                files.append(file)
+
+    if replace_backslash:
+        files = backslash2slash(files)
+    return files
+
+
+def backslash2slash(s: Union[list[str], str]):
+    '''
+    转换字符串内所有反斜杠到正斜杠
+    :param s:
+    :return:
+    '''
+    if isinstance(s, str):
+        s = s.replace('\\', '/')
+    else:
+        s = [a.replace('\\', '/') for a in s]
+    return s
+
+
+def open2(file, mode='r', *args, **kwargs):
+    '''
+    创建文件时自动创建相关文件夹
+    :param file:
+    :param mode:
+    :param args:
+    :param kwargs:
+    :return:
+    '''
+    if mode.startswith('w'):
+        os.makedirs(os.path.dirname(file), exist_ok=True)
+    return open(file, mode, *args, **kwargs)

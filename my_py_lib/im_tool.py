@@ -89,6 +89,7 @@ def resize_image(img, target_hw, interpolation=cv2.INTER_LINEAR, *, use_sk_func=
     :param use_sk_func: will use skimage.transform.resize to replace cv2.resize
     :return:
     '''
+    target_hw = np.int32(np.round(target_hw))
     if use_sk_func:
         out = sk_resize(img, target_hw, interpolation, mode='constant', cval=0, clip=True, preserve_range=True, anti_aliasing=False)
         out = np.asarray(out, img.dtype)
@@ -99,7 +100,7 @@ def resize_image(img, target_hw, interpolation=cv2.INTER_LINEAR, *, use_sk_func=
     return out
 
 
-def show_image(img, title='show_img'):
+def show_image(img, title='show_img', wait=0):
     """
     show image
     :param img: numpy array
@@ -107,7 +108,7 @@ def show_image(img, title='show_img'):
     """
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     cv2.imshow(title, img)
-    cv2.waitKey(0)
+    cv2.waitKey(wait)
 
 
 def pad_picture(img, width, height, interpolation=cv2.INTER_NEAREST, fill_value: Union[int, float, Tuple]=0.):
@@ -411,17 +412,31 @@ def copy_make_border(src, top, bottom, left, right, value=None):
     return new_im
 
 
-def bin_infill(im: np.ndarray):
+def bin_infill(im: np.ndarray, fill_value=1):
     '''
     二进制填充函数
     :param im:
     :return:
     '''
-    assert im.ndim == 3
+    assert im.ndim in [2, 3]
+    no_first_dim = im.ndim == 2
+    if im.ndim == 2:
+        im = im[None]
+    else:
+        im = np.transpose(im, [2, 0, 1])
+
+    im = np.uint8(im!=0)
     new_im = np.zeros_like(im, dtype=np.uint8)
-    for i in range(im.shape[2]):
-        cons, _ = cv2.findContours((im[:, :, i] != 0).astype(np.uint8), mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
-        new_im[:, :, i] = cv2.drawContours(cv2.UMat(new_im[:, :, i]), cons, -1, 1, -1).get()
+
+    for i in range(im.shape[0]):
+        cons, _ = cv2.findContours(im[i], mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(new_im[i], cons, -1, fill_value, -1)
+
+    if no_first_dim:
+        new_im = new_im[0]
+    else:
+        new_im = np.transpose(new_im, [1, 2, 0])
+
     return new_im
 
 

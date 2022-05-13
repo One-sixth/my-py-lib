@@ -265,17 +265,36 @@ def simple_contours(contours, epsilon=0):
     return out
 
 
-def resize_contours(contours, scale_factor_hw=1.0):
+def _resize_contour(contour, scale_factor_hw, offset_yx, dtype):
+    return ((contour - offset_yx) * scale_factor_hw + offset_yx).astype(dtype)
+
+
+def resize_contour(contour, scale_factor_hw=1.0, offset_yx=(0, 0)):
+    '''
+    缩放轮廓
+    :param contour: 输入一个轮廓
+    :param scale_factor_hw: 缩放倍数
+    :param offset_yx: 偏移位置，默认为左上角(0, 0)
+    :return:
+    '''
+    assert isinstance(contour, np.ndarray) and contour.ndim == 2 and contour.shape[-1] == 2
+    scale_factor_hw = np.asarray(scale_factor_hw).reshape([1, -1])
+    offset_yx = np.asarray(offset_yx, np.float32).reshape([1, 2])
+    out = _resize_contour(contour, scale_factor_hw, offset_yx, contour.dtype)
+    return out
+
+
+def resize_contours(contours, scale_factor_hw=1.0, offset_yx=(0, 0)):
     '''
     缩放轮廓
     :param contours: 输入一组轮廓
     :param scale_factor_hw: 缩放倍数
+    :param offset_yx: 偏移位置，默认为左上角(0, 0)
     :return:
     '''
-    if isinstance(scale_factor_hw, Iterable):
-        scale_factor_hw = np.array(scale_factor_hw)[None,]
-    # 以左上角为原点进行缩放轮廓
-    out = [(c * scale_factor_hw).astype(contours[0].dtype) for c in contours]
+    scale_factor_hw = np.asarray(scale_factor_hw).reshape([1, -1])
+    offset_yx = np.asarray(offset_yx, np.float32).reshape([1, 2])
+    out = [_resize_contour(c, scale_factor_hw, offset_yx, contours[0].dtype) for c in contours]
     return out
 
 
@@ -843,6 +862,21 @@ def check_point_in_contour(point, contour):
     c = tr_my_to_cv_contours([contour])[0]
     pt = point[::-1]
     return cv2.pointPolygonTest(c, pt, False)
+
+
+def sort_contours_by_area(conts, reverse=False):
+    '''
+    按面积排序轮廓，默认从小到大
+    :param conts:
+    :param reverse: 是否反转为从大到小排列
+    :return:
+    '''
+    areas = calc_contours_area(conts)
+    ids = np.argsort(areas)
+    if reverse:
+        ids = ids[::-1]
+    cs = list_multi_get_with_ids(conts, ids)
+    return cs
 
 
 def calc_dice_contours(contours1, contours2, *, return_area=False):
