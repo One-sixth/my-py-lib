@@ -4,17 +4,7 @@ and
 tiffslide image tools
 '''
 
-try:
-    import openslide as opsl
-except ...:
-    opsl = dict()
-    opsl.OpenSlide = None
 
-try:
-    import tiffslide as tisl
-except ...:
-    tisl = dict()
-    tisl.TiffSlide = None
 
 import numpy as np
 import cv2
@@ -24,11 +14,25 @@ try:
     from .numpy_tool import round_int
     from . import image_over_scan_wrapper
     from . import coords_over_scan_gen
+    from .void_cls import VC
 except (ModuleNotFoundError, ImportError):
     from my_py_lib import im_tool
     from my_py_lib.numpy_tool import round_int
     from my_py_lib import image_over_scan_wrapper
     from my_py_lib import coords_over_scan_gen
+    from void_cls import VC
+
+try:
+    import openslide as opsl
+except (ModuleNotFoundError, ImportError):
+    opsl = VC()
+    opsl.OpenSlide = None
+
+try:
+    import tiffslide as tisl
+except (ModuleNotFoundError, ImportError):
+    tisl = VC()
+    tisl.TiffSlide = None
 
 
 def read_region_any_ds(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
