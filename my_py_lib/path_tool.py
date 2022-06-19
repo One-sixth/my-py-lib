@@ -20,7 +20,7 @@ def split_file_path(p, base_dir=None):
 
     o = split_file_path('C:/dir/123.txt', 'C:')
     print(o)
-    ('C:', '/dir', '123', '.txt')
+    ('C:', 'dir', '123', '.txt')
 
     :param p:
     :return:
@@ -38,6 +38,8 @@ def split_file_path(p, base_dir=None):
     dir_path = dir_path.removeprefix(base_dir)
     if dir_path == '':
         dir_path = '.'
+    elif dir_path.startswith(('/', '\\')):
+        dir_path = dir_path[1:]
     return base_dir, dir_path, basename, extname
 
 
@@ -55,7 +57,7 @@ def insert_basename_end(p, s):
     :return:
     '''
     dir_path, basename, extname = split_file_path(p)
-    o = dir_path + basename + s + extname
+    o = f'{dir_path}/{basename}{s}{extname}'
     return o
 
 
@@ -84,7 +86,7 @@ def get_home_dir():
     '''
     if sys.platform == 'win32':
         homedir = os.environ['USERPROFILE']
-    elif sys.platform == 'linux' or sys.platform == 'darwin':
+    elif sys.platform in ('linux', 'darwin'):
         homedir = os.environ['HOME']
     else:
         raise NotImplemented(f'Error! Not this system. {sys.platform}')
@@ -138,6 +140,8 @@ def open2(file, mode='r', *args, **kwargs):
     :param kwargs:
     :return:
     '''
-    if mode.startswith('w'):
-        os.makedirs(os.path.dirname(file), exist_ok=True)
+    if mode.startswith(('w', 'a')):
+        d = os.path.dirname(file)
+        if d != '':
+            os.makedirs(d, exist_ok=True)
     return open(file, mode, *args, **kwargs)

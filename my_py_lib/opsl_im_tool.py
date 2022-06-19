@@ -125,15 +125,14 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
 
         tile = np.asarray(bim.read_region(lv0_pos, ds_level, tile_hw[::-1]))[..., :3]
 
+        assert tile.shape[0] == tile_hw[0] and tile.shape[1] == tile_hw[1]
+
         yx_start = round_int(np.float32(yx_start) * factor)
         yx_end = round_int(np.float32(yx_end) * factor)
 
         new_hw = yx_end - yx_start
 
-        try:
-            tile = im_tool.resize_image(tile, new_hw, interpolation=cv2.INTER_AREA)
-        except:
-            continue
+        tile = im_tool.resize_image(tile, new_hw, interpolation=cv2.INTER_AREA)
 
         thumb_im_wrap.set(yx_start, yx_end, tile)
 
