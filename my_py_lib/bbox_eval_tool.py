@@ -43,6 +43,23 @@ def calc_bbox_score(pred_bboxes, pred_classes, label_bboxes, label_classes, clas
     classes_list = np.array(classes_list).tolist()
     match_iou_thresh_list = np.array(match_iou_thresh_list).tolist()
 
+    pred_bboxes = np.float32(pred_bboxes)
+    label_bboxes = np.float32(label_bboxes)
+    if len(pred_bboxes) == 0:
+        pred_bboxes = pred_bboxes.reshape([-1, 4])
+    if len(label_bboxes) == 0:
+        label_bboxes = label_bboxes.reshape([-1, 4])
+
+    pred_classes = np.int32(pred_classes)
+    label_classes = np.int32(label_classes)
+
+    assert pred_classes.ndim == 1
+    assert label_classes.ndim == 1
+    check_bboxes(pred_bboxes)
+    check_bboxes(label_bboxes)
+    assert len(pred_bboxes) == len(pred_classes)
+    assert len(label_bboxes) == len(label_classes)
+
     score_table = {}
 
     if return_lookup_table:
@@ -58,9 +75,9 @@ def calc_bbox_score(pred_bboxes, pred_classes, label_bboxes, label_classes, clas
             for iou_th in match_iou_thresh_list:
                 score_table[cls][iou_th] = {}
                 score_table[cls][iou_th]['found_pred'] = 0
-                score_table[cls][iou_th]['fakefound_pred'] = len(pred_bboxes)
+                score_table[cls][iou_th]['fakefound_pred'] = int(np.sum(pred_classes == cls))
                 score_table[cls][iou_th]['found_label'] = 0
-                score_table[cls][iou_th]['nofound_label'] = len(label_bboxes)
+                score_table[cls][iou_th]['nofound_label'] = int(np.sum(label_classes == cls))
                 score_table[cls][iou_th]['pred_repeat'] = 0
                 score_table[cls][iou_th]['label_repeat'] = 0
                 score_table[cls][iou_th]['f05'] = 0.
@@ -72,9 +89,9 @@ def calc_bbox_score(pred_bboxes, pred_classes, label_bboxes, label_classes, clas
                 if return_lookup_table:
                     lookup_table[iou_th] = {}
                     score_table[cls][iou_th]['found_pred'] = []
-                    score_table[cls][iou_th]['fakefound_pred'] = list(pred_bboxes)
+                    score_table[cls][iou_th]['fakefound_pred'] = pred_bboxes[pred_classes == cls]
                     score_table[cls][iou_th]['found_label'] = []
-                    score_table[cls][iou_th]['nofound_label'] = list(label_bboxes)
+                    score_table[cls][iou_th]['nofound_label'] = label_bboxes[label_classes == cls]
                     score_table[cls][iou_th]['pred_repeat'] = []
                     score_table[cls][iou_th]['label_repeat'] = []
 
@@ -82,19 +99,6 @@ def calc_bbox_score(pred_bboxes, pred_classes, label_bboxes, label_classes, clas
             return score_table, lookup_table
         else:
             return score_table
-
-    pred_bboxes = np.float32(pred_bboxes)
-    label_bboxes = np.float32(label_bboxes)
-    check_bboxes(pred_bboxes)
-    check_bboxes(label_bboxes)
-
-    pred_classes = np.int32(pred_classes)
-    label_classes = np.int32(label_classes)
-
-    assert pred_classes.ndim == 1
-    assert label_classes.ndim == 1
-    assert len(pred_bboxes) == len(pred_classes)
-    assert len(label_bboxes) == len(label_classes)
 
     for cls in classes_list:
         score_table[cls] = {}

@@ -33,15 +33,33 @@ def calc_keypoint_score(pred_centers, pred_cls, label_centers, label_cls, cls_li
     '''
     score_table = {}
 
+    pred_centers = np.asarray(pred_centers, np.float32)
+    label_centers = np.asarray(label_centers, np.float32)
+
+    if len(pred_centers) == 0:
+        pred_centers = np.reshape(pred_centers, [-1, 2])
+    if len(label_centers) == 0:
+        label_centers = np.reshape(label_centers, [-1, 2])
+
+    pred_cls = np.int32(pred_cls)
+    label_cls = np.int32(label_cls)
+
+    assert pred_centers.ndim == 2 and pred_centers.shape[1] == 2
+    assert label_centers.ndim == 2 and label_centers.shape[1] == 2
+    assert pred_cls.ndim == 1
+    assert label_cls.ndim == 1
+    assert len(pred_centers) == len(pred_cls)
+    assert len(label_centers) == len(label_cls)
+
     if len(label_centers) == 0 or len(pred_centers) == 0:
         for cls in cls_list:
             score_table[cls] = {}
             for dt in match_distance_thresh_list:
                 score_table[cls][dt] = {}
                 score_table[cls][dt]['found_pred'] = 0
-                score_table[cls][dt]['fakefound_pred'] = len(pred_centers)
+                score_table[cls][dt]['fakefound_pred'] = int(np.sum(pred_cls==cls))
                 score_table[cls][dt]['found_label'] = 0
-                score_table[cls][dt]['nofound_label'] = len(label_centers)
+                score_table[cls][dt]['nofound_label'] = int(np.sum(label_cls==cls))
                 score_table[cls][dt]['pred_repeat'] = 0
                 score_table[cls][dt]['label_repeat'] = 0
                 score_table[cls][dt]['f05'] = 0.
@@ -50,22 +68,6 @@ def calc_keypoint_score(pred_centers, pred_cls, label_centers, label_cls, cls_li
                 score_table[cls][dt]['prec'] = 0.
                 score_table[cls][dt]['recall'] = 0.
         return score_table
-
-    pred_centers = np.asarray(pred_centers, np.float32)
-    if len(pred_centers) == 0:
-        pred_centers = np.reshape(pred_centers, [-1, 2])
-    pred_cls = np.asarray(pred_cls, np.int32)
-    label_centers = np.reshape(np.asarray(label_centers, np.float32), [-1, 2])
-    if len(label_centers) == 0:
-        label_centers = np.reshape(label_centers, [-1, 2])
-    label_cls = np.asarray(label_cls, np.int32)
-
-    assert pred_centers.ndim == 2 and pred_centers.shape[1] == 2
-    assert label_centers.ndim == 2 and label_centers.shape[1] == 2
-    assert pred_cls.ndim == 1
-    assert label_cls.ndim == 1
-    assert len(pred_centers) == len(pred_cls)
-    assert len(label_centers) == len(label_cls)
 
     for cls in cls_list:
         score_table[cls] = {}

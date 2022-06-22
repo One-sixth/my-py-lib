@@ -48,6 +48,21 @@ def calc_contour_score(pred_contours, pred_classes, label_contours, label_classe
     classes_list = np.array(classes_list).tolist()
     match_iou_thresh_list = np.array(match_iou_thresh_list).tolist()
 
+    pred_contours = [np.float32(c) for c in pred_contours]
+    label_contours = [np.float32(c) for c in label_contours]
+
+    pred_classes = np.int32(pred_classes)
+    label_classes = np.int32(label_classes)
+
+    assert pred_classes.ndim == 1
+    assert label_classes.ndim == 1
+    assert len(pred_contours) == len(pred_classes)
+    assert len(label_contours) == len(label_classes)
+    for c in pred_contours:
+        assert c.ndim == 2 and c.shape[-1] == 2
+    for c in label_contours:
+        assert c.ndim == 2 and c.shape[-1] == 2
+
     score_table = {}
 
     if return_lookup_table:
@@ -67,9 +82,9 @@ def calc_contour_score(pred_contours, pred_classes, label_contours, label_classe
             for iou_th in match_iou_thresh_list:
                 score_table[cls][iou_th] = {}
                 score_table[cls][iou_th]['found_pred'] = 0
-                score_table[cls][iou_th]['fakefound_pred'] = len(pred_contours)
+                score_table[cls][iou_th]['fakefound_pred'] = int(np.sum(pred_classes == cls))
                 score_table[cls][iou_th]['found_label'] = 0
-                score_table[cls][iou_th]['nofound_label'] = len(label_contours)
+                score_table[cls][iou_th]['nofound_label'] = int(np.sum(label_classes == cls))
                 score_table[cls][iou_th]['pred_repeat'] = 0
                 score_table[cls][iou_th]['label_repeat'] = 0
                 score_table[cls][iou_th]['f05'] = 0.
@@ -81,9 +96,9 @@ def calc_contour_score(pred_contours, pred_classes, label_contours, label_classe
                 if return_lookup_table:
                     lookup_table[iou_th] = {}
                     score_table[cls][iou_th]['found_pred'] = []
-                    score_table[cls][iou_th]['fakefound_pred'] = list(pred_contours)
+                    score_table[cls][iou_th]['fakefound_pred'] = list_multi_get_with_bool(pred_contours, pred_classes == cls)
                     score_table[cls][iou_th]['found_label'] = []
-                    score_table[cls][iou_th]['nofound_label'] = list(label_contours)
+                    score_table[cls][iou_th]['nofound_label'] = list_multi_get_with_bool(label_contours, label_classes == cls)
                     score_table[cls][iou_th]['pred_repeat'] = []
                     score_table[cls][iou_th]['label_repeat'] = []
 
@@ -91,17 +106,6 @@ def calc_contour_score(pred_contours, pred_classes, label_contours, label_classe
             return score_table, lookup_table
         else:
             return score_table
-
-    pred_contours = [np.float32(c) for c in pred_contours]
-    label_contours = [np.float32(c) for c in label_contours]
-
-    pred_classes = np.int32(pred_classes)
-    label_classes = np.int32(label_classes)
-
-    assert pred_classes.ndim == 1
-    assert label_classes.ndim == 1
-    assert len(pred_contours) == len(pred_classes)
-    assert len(label_contours) == len(label_classes)
 
     for cls in classes_list:
         score_table[cls] = {}

@@ -36,7 +36,7 @@ def check_bbox(bbox):
 
 def check_bboxes(bboxes):
     '''
-    检查输入是否为单个bbox
+    检查输入是否为多个bbox
     检查输入是否符合要求
     :param bbox_or_bboxes:
     :return:
