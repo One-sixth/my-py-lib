@@ -3,7 +3,7 @@
 '''
 
 import numpy as np
-from my_py_lib.score_tool import calc_score_f05_f1_f2_prec_recall
+from .score_tool import calc_score_f05_f1_f2_prec_recall
 
 
 def calc_pixel_score(pred_hms, label_hms, cls_list):

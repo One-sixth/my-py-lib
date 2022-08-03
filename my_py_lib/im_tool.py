@@ -468,7 +468,20 @@ def pad_img_to_target_ratio(im, ratio=1.):
     return im, param
 
 
-def resize_img_to_target_size(im: np.ndarray, size_hw, inter=cv2.INTER_AREA):
+def pad_img_to_target_ratio_undo(im, param):
+    '''
+    取消操作 pad_img_to_target_ratio
+    :param im:
+    :param param: pad_img_to_target_ratio返回的参数
+    :return:
+    '''
+    assert im.ndim == 3
+    ((pad_h_1, pad_h_2), (pad_w_1, pad_w_2)) = param
+    im = im[pad_h_1:im.shape[0]-pad_h_2, pad_w_1:im.shape[1]-pad_w_2]
+    return im
+
+
+def resize_img_to_target_size(im: np.ndarray, size_hw, interp=cv2.INTER_AREA):
     '''
     缩放图像到指定大小，并且返回缩放参数
     :param im:
@@ -480,9 +493,22 @@ def resize_img_to_target_size(im: np.ndarray, size_hw, inter=cv2.INTER_AREA):
     im_hw = np.float32(im.shape[:2])
     size_hw = np.float32(size_hw)
     param = size_hw / im_hw
-    oim = cv2.resize(im, tuple(np.int32(size_hw[::-1])), interpolation=inter)
+    oim = cv2.resize(im, tuple(np.int32(size_hw[::-1])), interpolation=interp)
     oim = ensure_image_has_3dim(oim)
     return oim, param
+
+
+def resize_img_to_target_size_undo(im: np.ndarray, param, interp=cv2.INTER_AREA):
+    '''
+    缩放图像到指定大小，并且返回缩放参数
+    :param im:
+    :param size_hw:
+    :return:
+    '''
+    assert im.ndim == 3
+    new_size = np.int32(np.round(np.float32(im.shape[:2]) / param))
+    im = resize_image(im, new_size, interpolation=interp)
+    return im
 
 
 def show_hm_on_image(img: np.ndarray,

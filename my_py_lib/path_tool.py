@@ -144,4 +144,9 @@ def open2(file, mode='r', *args, **kwargs):
         d = os.path.dirname(file)
         if d != '':
             os.makedirs(d, exist_ok=True)
+
+    if 'encoding' not in kwargs and 'b' not in mode:
+        # 令默认的文本模式为 utf8
+        kwargs['encoding'] = 'utf8'
+
     return open(file, mode, *args, **kwargs)

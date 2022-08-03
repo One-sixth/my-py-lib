@@ -107,6 +107,10 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
     :param tile_hw:     采样时图块大小
     :return:
     '''
+    # 支持逆向索引
+    if ds_level < 0:
+        ds_level = bim.level_count + ds_level
+
     lv0_hw = bim.level_dimensions[0][::-1]
 
     level_hw = bim.level_dimensions[ds_level][::-1]
