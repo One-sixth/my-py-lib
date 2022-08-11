@@ -228,8 +228,18 @@ def make_contour_from_bbox(bbox):
     p2 = [bbox[0], bbox[3]]
     p3 = [bbox[2], bbox[3]]
     p4 = [bbox[2], bbox[1]]
-    contours = [p1, p2, p3, p4]
-    contours = np.array(contours)
+    contour = [p1, p2, p3, p4]
+    contour = np.asarray(contour)
+    return contour
+
+
+def make_contours_from_bboxes(bboxes):
+    '''
+    将一组包围框转换为一组轮廓
+    :param bbox: np.ndarray [y1, x1, y2, x2]
+    :return:
+    '''
+    contours = [make_contour_from_bbox(b) for b in bboxes]
     return contours
 
 
@@ -243,8 +253,19 @@ def make_bbox_from_contour(contour):
     max_y = np.max(contour[:, 0])
     min_x = np.min(contour[:, 1])
     max_x = np.max(contour[:, 1])
-    bbox = np.array([min_y, min_x, max_y, max_x])
+    bbox = np.asarray([min_y, min_x, max_y, max_x])
     return bbox
+
+
+def make_bboxes_from_contours(contours):
+    '''
+    求轮廓的外接包围框
+    :param contour:
+    :return:
+    '''
+    bboxes = [make_bbox_from_contour(c) for c in contours]
+    bboxes = np.asarray(bboxes)
+    return bboxes
 
 
 def simple_contours(contours, epsilon=0):

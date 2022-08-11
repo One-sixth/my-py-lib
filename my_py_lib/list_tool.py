@@ -55,6 +55,8 @@ def list_split_by_size(self: Iterable, size: int):
 
 
 def list_split_by_group(self: Iterable, n_group: int):
+    # 顺序分组
+    assert n_group > 0
     self = list(self)
     sizes = [int(len(self) / n_group)] * n_group
     for i in range(len(self) % n_group):
@@ -65,6 +67,15 @@ def list_split_by_group(self: Iterable, n_group: int):
         l = self[i: i+s]
         g.append(l)
         i += s
+    return g
+
+
+def list_split_by_cross_group(self: Iterable, n_group: int):
+    # 交错分组
+    assert n_group > 0
+    g = [[] for _ in range(n_group)]
+    for fi, f in enumerate(self):
+        g[fi % n_group].append(f)
     return g
 
 
@@ -138,6 +149,9 @@ if __name__ == '__main__':
 
     b = list_split_by_group(a, 2)
     assert b == [[1, 2, 3], [4, 5, 6]]
+
+    b = list_split_by_cross_group(a, 2)
+    assert b == [[1, 3, 5], [2, 4, 6]]
 
     b = list_group_by_classes(a, [1, 1, 2, 2, 3, 3])
     assert b == {1: [1, 2], 2: [3, 4], 3: [5, 6]}
