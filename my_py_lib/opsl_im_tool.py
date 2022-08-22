@@ -35,6 +35,18 @@ except (ModuleNotFoundError, ImportError):
     tisl.TiffSlide = None
 
 
+def get_level0_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide]):
+    if isinstance(opsl_im, tisl.TiffSlide):
+        prop_x, prop_y = tisl.PROPERTY_NAME_MPP_X, tisl.PROPERTY_NAME_MPP_Y
+    elif isinstance(opsl_im, opsl.OpenSlide):
+        prop_x, prop_y = opsl.PROPERTY_NAME_MPP_X, opsl.PROPERTY_NAME_MPP_Y
+    else:
+        raise NotImplementedError('Error! Unsupported slide type.')
+    x = opsl_im.properties[prop_x]
+    y = opsl_im.properties[prop_y]
+    return (y, x)
+
+
 def read_region_any_ds(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
                        ds_factor: float,
                        level_0_start_yx: Tuple[int, int],
@@ -59,7 +71,7 @@ def read_region_any_ds(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
     # base_level = None
     # ori_patch_hw = None
     # 这里需要使用round，因为大小需要比较准确，避免 511.99 被压到 511
-    target_patch_hw = round_int(level_0_region_hw / ds_factor)
+    target_patch_hw = round_int(level_0_region_hw / ds_factor, dtype=np.int64)
 
     is_close_list = np.isclose(ds_factor, level_downsamples, rtol=close_thresh, atol=0)
     if np.any(is_close_list):
@@ -81,11 +93,12 @@ def read_region_any_ds(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
         assert level >= 0, 'Error! read_im_mod found unknow level {}'.format(level)
         base_level = level
         level_ds_factor = level_downsamples[level]
-        ori_patch_hw = np.array(target_patch_hw / level_ds_factor * ds_factor, np.int64)
+        ori_patch_hw = round_int(target_patch_hw / level_ds_factor * ds_factor, dtype=np.int64)
 
     # 读取图块，如果不是目标大小则缩放到目标大小
     # 使用 int64 避免 tiffslide 坐标溢出导致的错位的问题
-    im = np.uint8(opsl_im.read_region(np.int64(level_0_start_yx[::-1]), base_level, np.int64(ori_patch_hw[::-1])))[:, :, :3]
+    im = opsl_im.read_region(np.int64(level_0_start_yx[::-1]), base_level, ori_patch_hw[::-1])
+    im = np.uint8(im)[:, :, :3]
     if np.any(ori_patch_hw != target_patch_hw):
         im = im_tool.resize_image(im, target_patch_hw, cv2.INTER_AREA)
     return im
