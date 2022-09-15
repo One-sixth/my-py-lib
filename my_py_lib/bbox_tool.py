@@ -104,7 +104,7 @@ def resize_bboxes(bbox_or_bboxes: np.ndarray, factor_hw=(1, 1), center_yx=(0, 0)
 
     ori_dtype = bboxes.dtype
 
-    bboxes = np.asarray(bboxes, np.float32)
+    bboxes = np.array(bboxes, np.float32)
     bboxes -= center_yxyx
     bboxes *= factor_hwhw
     bboxes += center_yxyx
