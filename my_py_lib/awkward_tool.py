@@ -1,6 +1,7 @@
 import awkward as ak
 import csv
 import pandas
+from typing import Union
 
 
 def load_ak_from_csv(csv_file):
@@ -21,7 +22,6 @@ def load_ak_from_csv(csv_file):
     return arr
 
 
-
 def load_ak_from_pandas(table: pandas.DataFrame):
     '''
     从 pandas DataFrame 中载入为 awkward 数组
@@ -38,7 +38,7 @@ def load_ak_from_pandas(table: pandas.DataFrame):
     return arr
 
 
-def load_ak_from_excel(excel_file, sheet_name: str|int|None=0, dtype=str, **pandas_kwargs):
+def load_ak_from_excel(excel_file, sheet_name: Union[str,int]=0, dtype=str, **pandas_kwargs):
     '''
     从 excel 中载入为 awkward 数组
     :param excel_file: 
