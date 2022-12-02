@@ -4,7 +4,7 @@
 '''
 import glob
 import os
-import sys
+import pathlib
 from typing import Union
 
 
@@ -61,6 +61,24 @@ def insert_basename_end(p, s):
     return o
 
 
+def insert_basename_ahead(p, s):
+    '''
+    在基本名前面插入字符串
+
+    例子：
+    s = insert_basename_ahead('C:/12.txt', 'a_')
+    print(s)
+    C:/a_12.txt
+
+    :param p: 原始文件名
+    :param s: 要附加的字符串
+    :return:
+    '''
+    dir_path, basename, extname = split_file_path(p)
+    o = f'{dir_path}/{s}{basename}{extname}'
+    return o
+
+
 def replace_extname(p, s):
     '''
     替换掉后缀名
@@ -82,14 +100,16 @@ def replace_extname(p, s):
 def get_home_dir():
     '''
     获得当前用户家目录，支持windows，linux和macosx
+    更新方法，更加简单
     :return:
     '''
-    if sys.platform == 'win32':
-        homedir = os.environ['USERPROFILE']
-    elif sys.platform in ('linux', 'darwin'):
-        homedir = os.environ['HOME']
-    else:
-        raise NotImplemented(f'Error! Not this system. {sys.platform}')
+    homedir = str(pathlib.Path.home())
+    # if sys.platform == 'win32':
+    #     homedir = os.environ['USERPROFILE']
+    # elif sys.platform in ('linux', 'darwin'):
+    #     homedir = os.environ['HOME']
+    # else:
+    #     raise NotImplemented(f'Error! Not this system. {sys.platform}')
     return homedir
 
 

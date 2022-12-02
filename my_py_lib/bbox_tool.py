@@ -296,35 +296,128 @@ def pad_bbox_to_square(bbox: np.ndarray):
     return bbox
 
 
+# def nms_process(confs: np.ndarray, bboxes: np.ndarray, iou_thresh: float=0.7):
+#     '''
+#     NMS 过滤，只需要置信度和坐标
+#     老方法，数量巨大时很慢
+#     :param confs:       置信度列表，形状为 [-1] 或 [-1, 1]
+#     :param bboxes:      包围框列表，形状为 [-1, 4]，坐标格式为 y1x1y2x2 或 x1y1x2y2
+#     :param iou_thresh:  IOU阈值
+#     :return:
+#     '''
+#     assert len(confs) == len(bboxes)
+#     confs = np.asarray(confs, np.float32).reshape([-1])
+#     bboxes = np.asarray(bboxes, np.float32).reshape([-1, 4])
+#     assert len(confs) == len(bboxes)
+#     ids = np.argsort(confs)[::-1]
+#     ids = ids.reshape([-1])
+#     keep_boxes = []
+#     keep_ids = []
+#     for i in ids:
+#         if len(keep_boxes) == 0:
+#             keep_boxes.append(bboxes[i])
+#             keep_ids.append(i)
+#             continue
+#         cur_box = bboxes[i]
+#         ious = calc_bbox_iou_1toN(cur_box, np.asarray(keep_boxes, np.float32))
+#         max_iou = np.max(ious)
+#         if max_iou > iou_thresh:
+#             continue
+#         keep_boxes.append(bboxes[i])
+#         keep_ids.append(i)
+#     return keep_ids
+
+
 def nms_process(confs: np.ndarray, bboxes: np.ndarray, iou_thresh: float=0.7):
     '''
     NMS 过滤，只需要置信度和坐标
+    新方法，减少了数据移动，更快
     :param confs:       置信度列表，形状为 [-1] 或 [-1, 1]
     :param bboxes:      包围框列表，形状为 [-1, 4]，坐标格式为 y1x1y2x2 或 x1y1x2y2
     :param iou_thresh:  IOU阈值
-    :return:
+    :return: 保留框的编号
     '''
     assert len(confs) == len(bboxes)
     confs = np.asarray(confs, np.float32).reshape([-1])
     bboxes = np.asarray(bboxes, np.float32).reshape([-1, 4])
     assert len(confs) == len(bboxes)
-    ids = np.argsort(confs)[::-1]
-    ids = ids.reshape([-1])
-    keep_boxes = []
+
+    ids = np.argsort(confs)[::-1].reshape([-1])
     keep_ids = []
-    for i in ids:
-        if len(keep_boxes) == 0:
-            keep_boxes.append(bboxes[i])
-            keep_ids.append(i)
-            continue
-        cur_box = bboxes[i]
-        ious = calc_bbox_iou_1toN(cur_box, np.asarray(keep_boxes, np.float32))
-        max_iou = np.max(ious)
-        if max_iou > iou_thresh:
-            continue
-        keep_boxes.append(bboxes[i])
-        keep_ids.append(i)
+
+    while len(ids) > 0:
+        keep_ids.append(ids[0])
+        ious = calc_bbox_iou_1toN(bboxes[ids[0]], bboxes[ids])
+        del_ids = np.argwhere(ious >= iou_thresh).reshape([-1])
+        ids = np.delete(ids, del_ids, axis=0)
+
     return keep_ids
+
+
+def fusion_bboxes_by_conf(boxes, confs, conf_type):
+    '''
+    通过置信度融合包围框
+    :param boxes: 坐标框输入，要求形状为 [N, 4]
+    :param confs: 置信度输入，要求形状为 [N, 1]
+    :param conf_type: 置信度融合方法
+    :return: 融合后的坐标框和置信度。box [1, 4], conf [1, 1]
+    '''
+    # boxes
+    # confs [N, 1]
+
+    assert isinstance(boxes, np.ndarray) and boxes.ndim == 2 and boxes.shape[1] == 4
+    assert isinstance(confs, np.ndarray) and confs.ndim == 1
+    assert boxes.shape[0] > 0 and boxes.shape[0] == confs.shape[0]
+
+    box = np.sum(boxes * confs[:, None], 0, keepdims=False, initial=0) / np.sum(confs[:, None], axis=0, keepdims=False)
+    if conf_type == 'avg':
+        conf = np.mean(confs, axis=0, keepdims=False)
+    elif conf_type == 'max':
+        conf = np.max(confs, axis=0, keepdims=False, initial=0)
+    else:
+        raise AssertionError('Error! Bad param conf_type.')
+
+    # box [4,]
+    # conf [1,]
+    return box, conf
+
+
+def wbf_process(confs: np.ndarray, bboxes: np.ndarray, iou_thresh: float=0.7, conf_type='avg'):
+    '''
+    WBF 加权框融合，只需要置信度和坐标
+    :param confs:       置信度列表，形状为 [-1] 或 [-1, 1]
+    :param bboxes:      包围框列表，形状为 [-1, 4]，坐标格式为 y1x1y2x2 或 x1y1x2y2
+    :param iou_thresh:  IOU阈值
+    :param conf_type:   置信度融合方法
+    :return: 返回融合后的坐标框和置信度
+    '''
+    assert len(confs) == len(bboxes)
+    confs = np.asarray(confs, np.float32).reshape([-1])
+    bboxes = np.asarray(bboxes, np.float32).reshape([-1, 4])
+    assert len(confs) == len(bboxes)
+
+    if len(confs) == 0:
+        return np.zeros([0, 4], np.float32), np.zeros([0,], np.float32)
+
+    ids = np.argsort(confs)[::-1].reshape([-1])
+
+    out_bboxes = []
+    out_confs = []
+
+    while len(ids) > 0:
+        ious = calc_bbox_iou_1toN(bboxes[ids[0]], bboxes[ids])
+        del_ids = np.argwhere(ious >= iou_thresh).reshape([-1])
+
+        box, conf = fusion_bboxes_by_conf(bboxes[del_ids], confs[del_ids], conf_type)
+        out_bboxes.append(box)
+        out_confs.append(conf)
+
+        ids = np.delete(ids, del_ids, axis=0)
+
+    out_confs = np.stack(out_confs, 0)
+    out_bboxes = np.stack(out_bboxes, 0)
+
+    return out_confs, out_bboxes
 
 
 def make_bbox_by_center_point(center_yx, bbox_hw: Union[int, float, Sized], dtype=np.float32):
