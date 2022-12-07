@@ -31,6 +31,8 @@ def load_ak_from_pandas(table: pandas.DataFrame):
     shape = table.shape
 
     rows = []
+    rows.append(table.columns.tolist())
+
     for y in range(shape[0]):
         rows.append(table.iloc[y].tolist())
 
