@@ -113,13 +113,14 @@ def get_home_dir():
     return homedir
 
 
-def find_file_by_exts(dirs: Union[list[str], str], exts: Union[list[str], str], recursive=True, replace_backslash=False):
+def find_file_by_exts(dirs: Union[list[str], str], exts: Union[list[str], str], recursive=True, replace_backslash=False, ignore_case=False):
     '''
     检索目录内所有符合要求后缀名的文件
     :param dirs:                可以输入一个或一组文件夹
     :param exts:                可以输入一个或一组后缀名
     :param recursive:           是否检索子文件夹
     :param replace_backslash:   是否自动转换反斜杠到斜杠
+    :param ignore_case:         是否忽略大小写
     :return:
     '''
     if isinstance(dirs, str):
@@ -127,10 +128,16 @@ def find_file_by_exts(dirs: Union[list[str], str], exts: Union[list[str], str], 
     if isinstance(exts, str):
         exts = [exts]
 
+    if ignore_case:
+        exts = [e.lower() for e in exts]
+
     files = []
     for dir in dirs:
         for file in glob.glob(f'{dir}/**/*', recursive=recursive):
-            if os.path.splitext(file)[1] in exts and os.path.isfile(file):
+            ext = os.path.splitext(file)[1]
+            if ignore_case:
+                ext = ext.lower()
+            if ext in exts and os.path.isfile(file):
                 files.append(file)
 
     if replace_backslash:

@@ -107,38 +107,111 @@ def read_region_any_ds(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
 opsl_read_region_any_ds = read_region_any_ds
 
 
+def read_region_any_ds_v2(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
+                          ds_factor: float,
+                          start_yx: Tuple[int, int],
+                          region_hw: Tuple[int, int]
+                          ):
+    '''
+    从多分辨率图中读取任意尺度图像。
+    与 read_region_any_ds 区别为，这里的坐标和宽高需要是目标下采样层级的坐标，而不是0层级的坐标。
+    也不支持就近选取。
+    :param opsl_im:     待读取的 OpenSlide 或 tisl.TiffSlide 图像
+    :param ds_factor:   下采样尺度
+    :param start_yx:    所读取区域在目标下采样等价的层级的位置
+    :param region_hw:   所读取区域在目标下采样等价的层级的高宽
+    :return:
+    '''
+    level_downsamples = opsl_im.level_downsamples
+
+    start_yx = round_int(start_yx)
+    region_hw = round_int(region_hw)
+
+    assert ds_factor > 0, f'Error! Not allow ds_factor <= 0. ds_factor={ds_factor}'
+
+    ds_level = opsl_im.get_best_level_for_downsample(ds_factor)
+
+    lv0_start_yx = round_int(start_yx * ds_factor)
+
+    # 这里需要使用round，因为大小需要比较准确，避免 511.99 被压到 511
+    read_region_hw = round_int(region_hw * (ds_factor / level_downsamples[ds_level]), dtype=np.int64)
+
+    if isinstance(opsl_im, tisl.TiffSlide):
+        patch = opsl_im.read_region(lv0_start_yx[::-1], ds_level, read_region_hw[::-1], as_array=True)
+    else:
+        patch = np.asarray(opsl_im.read_region(lv0_start_yx[::-1], ds_level, read_region_hw[::-1]))[..., :3]
+
+    assert isinstance(patch, np.ndarray)
+    patch = im_tool.resize_image(patch, region_hw, cv2.INTER_AREA)
+    return patch
+
+
+def read_region_any_ds_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
+                           mpp: float,
+                           level_0_start_yx: Tuple[int, int],
+                           level_0_region_hw: Tuple[int, int]
+                           ):
+    '''
+    从多分辨率图中读取任意尺度图像。
+    使用mpp做基准。
+    :param opsl_im:             待读取的 OpenSlide 或 tisl.TiffSlide 图像
+    :param mpp:                 目标倍镜的mpp。例如：40x的mpp为0.25，20x的mpp为0.5，10x的mpp为1.0，依此类推
+    :param level_0_start_yx:    所读取区域在0层级的位置
+    :param level_0_region_hw:   所读取区域在0层级的高宽
+    :return:
+    '''
+    lv0_mpp = get_level0_mpp(opsl_im)
+    ds_factor = mpp / lv0_mpp
+    patch = read_region_any_ds(opsl_im, ds_factor, level_0_start_yx, level_0_region_hw, 0.)
+    return patch
+
+
 def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
                          ds_level=0,
                          thumb_size=2048,
                          tile_hw=(512, 512),
+                         *,
+                         lv0_region_bbox=None,
                          ):
     '''
     从任意层级创建缩略图
-    :param bim:         大图像，允许为 OpenSlide 或 TiffSlide
-    :param ds_level:    指定层级
-    :param thumb_size:  缩略图最长边的长度
-    :param tile_hw:     采样时图块大小
+    :param bim:             大图像，允许为 OpenSlide 或 TiffSlide
+    :param ds_level:        指定层级
+    :param thumb_size:      缩略图最长边的长度
+    :param tile_hw:         采样时图块大小
+    :param lv0_region_bbox: 生成指定区域的缩略图，格式为 y1x1y2x2。 例如 [100, 100, 400, 400]
     :return:
     '''
     # 支持逆向索引
     if ds_level < 0:
         ds_level = bim.level_count + ds_level
 
-    lv0_hw = bim.level_dimensions[0][::-1]
+    # 支持区域缩略图生成
+    if lv0_region_bbox is None:
+        lv0_region_bbox = [0, 0, *bim.level_dimensions[0][::-1]]
+    else:
+        assert len(lv0_region_bbox) == 4
+    lv0_region_bbox = np.int64(lv0_region_bbox)
 
+    lv0_hw = bim.level_dimensions[0][::-1]
     level_hw = bim.level_dimensions[ds_level][::-1]
 
     to_lv0_factor = lv0_hw / np.float32(level_hw)
-    factor = np.min(thumb_size / np.float32(level_hw))
 
-    thumb_hw = round_int(np.float32(level_hw) * factor)
+    level_region_bbox = round_int(lv0_region_bbox / np.concatenate([to_lv0_factor, to_lv0_factor]))
+    level_region_pos = level_region_bbox[:2]
+    level_region_hw = level_region_bbox[2:]-level_region_bbox[:2]
+
+    factor = np.min(thumb_size / np.float32(level_region_hw))
+
+    thumb_hw = round_int(np.float32(level_region_hw) * factor)
 
     thumb_im = np.zeros([*thumb_hw, 3], np.uint8)
     thumb_im_wrap = image_over_scan_wrapper.ImageOverScanWrapper(thumb_im)
 
-    for yx_start, yx_end in coords_over_scan_gen.n_step_scan_coords_gen_v2(level_hw, window_hw=tile_hw, n_step=1):
+    for yx_start, yx_end in coords_over_scan_gen.n_step_scan_coords_gen_v2(level_region_hw, window_hw=tile_hw, n_step=1):
 
-        lv0_pos = round_int(yx_start[::-1] * to_lv0_factor)
+        lv0_pos = round_int((yx_start+level_region_pos)[::-1] * to_lv0_factor)
 
         tile = np.asarray(bim.read_region(lv0_pos, ds_level, tile_hw[::-1]))[..., :3]
 
