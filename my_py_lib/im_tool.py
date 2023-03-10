@@ -164,7 +164,7 @@ def center_pad(im, target_hw, fill_value: Union[int, float, Tuple]=0):
     return im
 
 
-def crop_picture(img, width, height):
+def crop_picture(img, width, height, interp=cv2.INTER_NEAREST):
     """
     padded picture to specified shape
     :param img: input numpy array
@@ -183,7 +183,7 @@ def crop_picture(img, width, height):
         need_crop_y = (s_height - s_width / ratio) / 2
         new_height = s_width / ratio
         img = img[int(need_crop_y):int(need_crop_y+new_height), 0:s_width, :]
-    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_NEAREST)
+    img = cv2.resize(img, (width, height), interpolation=interp)
     return img
 
 

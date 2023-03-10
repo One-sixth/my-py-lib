@@ -5,7 +5,6 @@ tiffslide image tools
 '''
 
 
-
 import numpy as np
 import cv2
 from typing import Union, Tuple
@@ -44,7 +43,7 @@ def get_level0_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide]):
         raise NotImplementedError('Error! Unsupported slide type.')
     x = opsl_im.properties[prop_x]
     y = opsl_im.properties[prop_y]
-    return (y, x)
+    return y, x
 
 
 def read_region_any_ds(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
@@ -161,13 +160,61 @@ def read_region_any_ds_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
     :return:
     '''
     lv0_mpp = get_level0_mpp(opsl_im)
-    ds_factor = mpp / lv0_mpp
+    ds_factor = mpp / np.float32(lv0_mpp)
+    ds_factor = np.mean(ds_factor)
     patch = read_region_any_ds(opsl_im, ds_factor, level_0_start_yx, level_0_region_hw, 0.)
     return patch
 
 
+def read_region_any_ds_mpp_v2(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
+                              mpp: float,
+                              start_yx: Tuple[int, int],
+                              region_hw: Tuple[int, int]
+                              ):
+    '''
+    从多分辨率图中读取任意尺度图像。
+    使用mpp做基准。
+    :param opsl_im:             待读取的 OpenSlide 或 tisl.TiffSlide 图像
+    :param mpp:                 目标倍镜的mpp。例如：40x的mpp为0.25，20x的mpp为0.5，10x的mpp为1.0，依此类推
+    :param start_yx:            所读取区域在指定mpp层级的位置
+    :param region_hw:           所读取区域在指定mpp层级的高宽
+    :return:
+    '''
+    lv0_mpp = get_level0_mpp(opsl_im)
+    ds_factor = mpp / np.float32(lv0_mpp)
+    ds_factor = np.mean(ds_factor)
+    patch = read_region_any_ds_v2(opsl_im, ds_factor, start_yx, region_hw)
+    return patch
+
+
+def get_slide_hw_by_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide], mpp: float):
+    '''
+    获得slide在指定mpp值时的高宽
+    :param opsl_im:
+    :param mpp:
+    :return:
+    '''
+    lv0_mpp = get_level0_mpp(opsl_im)
+    ds_factor = mpp / np.asarray(lv0_mpp, np.float32)
+    lv0_hw = opsl_im.level_dimensions[0][::-1]
+    hw = round_int(lv0_hw / ds_factor, np.int64)
+    return hw
+
+
+def get_ds_factor_by_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide], mpp: float):
+    '''
+    获得slide在指定mpp值时的下采样倍率
+    :param opsl_im:
+    :param mpp:
+    :return:
+    '''
+    lv0_mpp = get_level0_mpp(opsl_im)
+    ds_factor = mpp / np.asarray(lv0_mpp, np.float32)
+    return ds_factor.mean()
+
+
 def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
-                         ds_level=0,
+                         ds_level=None,
                          thumb_size=2048,
                          tile_hw=(512, 512),
                          *,
@@ -182,6 +229,10 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
     :param lv0_region_bbox: 生成指定区域的缩略图，格式为 y1x1y2x2。 例如 [100, 100, 400, 400]
     :return:
     '''
+    # 支持自适应索引
+    if ds_level is None:
+        ds_level = opsl_im.get_best_level_for_downsample(min(opsl_im.level_dimensions[0]) / thumb_size)
+
     # 支持逆向索引
     if ds_level < 0:
         ds_level = bim.level_count + ds_level
@@ -227,7 +278,6 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
         thumb_im_wrap.set(yx_start, yx_end, tile)
 
     return thumb_im
-
 
 
 if __name__ == '__main__':

@@ -6,8 +6,10 @@ import cv2
 import numpy as np
 try:
     from .contour_tool import find_contours, draw_contours, resize_contours
+    from .opsl_im_tool import make_thumb_any_level
 except (ModuleNotFoundError, ImportError):
     from contour_tool import find_contours, draw_contours, resize_contours
+    from opsl_im_tool import make_thumb_any_level
 
 
 def get_tissue_contours_default_postprocess(tim: np.ndarray):
@@ -115,8 +117,7 @@ def get_tissue_contours_with_big_pic(opsl_im,
     :param debug_show:          设定为True可以启动调试功能
     :return:
     '''
-    thumb = opsl_im.get_thumbnail([thumb_size, thumb_size])
-    thumb = np.array(thumb)
+    thumb = make_thumb_any_level(opsl_im, thumb_size=thumb_size)
     tissue_contours = get_tissue_contours(thumb, gray_thresh=gray_thresh, channel_diff_thresh=channel_diff_thresh, area_thresh=area_thresh,
                                           postprocess_func=postprocess_func, debug_show=debug_show)
     thumb_hw = thumb.shape[:2]
@@ -133,8 +134,7 @@ def get_custom_contours_with_big_pic(opsl_im, thumb_size, get_contours_func, **g
     :param get_contours_func_kwargs: 自定义获取轮廓的函数的参数
     :return:
     '''
-    thumb = opsl_im.get_thumbnail([thumb_size, thumb_size])
-    thumb = np.array(thumb)
+    thumb = make_thumb_any_level(opsl_im, thumb_size=thumb_size)
     tissue_contours = get_contours_func(thumb, **get_contours_func_kwargs)
     thumb_hw = thumb.shape[:2]
     factor_hw = np.array(opsl_im.level_dimensions[0][::-1], dtype=np.float32) / thumb_hw

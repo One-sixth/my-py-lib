@@ -50,7 +50,7 @@ class ImageOverScanWrapper:
         right = max(yx_end[1]-im.shape[1], 0)
         if 0 == top == left == bottom == right:
             return im2
-        im3 = check_and_tr_umat(copy_make_border(im2, top, bottom, left, right, value=pad_value))
+        im3 = copy_make_border(im2, top, bottom, left, right, value=pad_value)
         assert im3.shape[0] == (yx_end[0] - yx_start[0]) and im3.shape[1] == (yx_end[1] - yx_start[1])
         im3 = ensure_image_has_3dim(im3)
         return im3
