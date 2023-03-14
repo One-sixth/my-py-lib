@@ -231,7 +231,7 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
     '''
     # 支持自适应索引
     if ds_level is None:
-        ds_level = opsl_im.get_best_level_for_downsample(min(opsl_im.level_dimensions[0]) / thumb_size)
+        ds_level = bim.get_best_level_for_downsample(min(bim.level_dimensions[0]) / thumb_size)
 
     # 支持逆向索引
     if ds_level < 0:
