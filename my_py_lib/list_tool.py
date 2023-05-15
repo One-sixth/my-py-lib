@@ -130,6 +130,27 @@ def list_pop_items_with_bools(self: list, bools: Iterable):
     return items
 
 
+def list_join(self: list, items: list[list,...]):
+    self = list(self)
+    items = list(items)
+    if len(items) == 0:
+        return []
+    a = []
+    for l in items[:-1]:
+        a += l
+        a += self
+    a += items[-1]
+    return a
+
+
+def list_fill(self: list, value, copy=False):
+    if copy:
+        self = self.copy()
+    for i in range(len(self)):
+        self[i] = value
+    return self
+
+
 if __name__ == '__main__':
     a = [1, 2, 3, 4, 5, 6]
     b = list_multi_get_with_ids(a, [0, 2, 4])
@@ -175,3 +196,11 @@ if __name__ == '__main__':
     a2 = [1,2,3,4,5,6]
     b = list_pop_items_with_bools(a2, [False, False, True, False, True, False])
     assert a2 == [1, 2, 4, 6] and b == [3, 5]
+
+    a2 = [',']
+    b = list_join(a2, [[1, 2], [3, 4], [5, 6]])
+    assert b == [1, 2, ',', 3, 4, ',', 5, 6]
+
+    a2 = [1,2,3,4,5]
+    b = list_fill(a2, 10)
+    assert b == [10, 10, 10, 10, 10]
