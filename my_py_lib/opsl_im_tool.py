@@ -229,9 +229,21 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
     :param lv0_region_bbox: 生成指定区域的缩略图，格式为 y1x1y2x2。 例如 [100, 100, 400, 400]
     :return:
     '''
+    if lv0_region_bbox is not None:
+        lv0_region_bbox = np.asarray(lv0_region_bbox, np.int32)
+        assert lv0_region_bbox.shape == (4,)
+
+    thumb_size = np.asarray(thumb_size, np.float32).reshape([-1])
+
     # 支持自适应索引
     if ds_level is None:
-        ds_level = bim.get_best_level_for_downsample(min(bim.level_dimensions[0]) / thumb_size)
+        if lv0_region_bbox is not None:
+            reg_hw = lv0_region_bbox[2:] - lv0_region_bbox[:2]
+        else:
+            reg_hw = np.asarray(bim.level_dimensions[0][::-1], np.int32)
+        fac = reg_hw / thumb_size
+        fac = min(fac)
+        ds_level = bim.get_best_level_for_downsample(fac)
 
     # 支持逆向索引
     if ds_level < 0:
