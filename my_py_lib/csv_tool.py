@@ -19,7 +19,7 @@ def load_csv(csv_file, encoding='utf8'):
     return rows
 
 
-def write_csv(rows, out_file, encoding='utf8'):
+def save_csv(rows, out_file, encoding='utf8'):
     if isinstance(out_file, str):
         csv_file = open(out_file, 'w', encoding=encoding, newline='')
 
@@ -31,5 +31,5 @@ def write_csv(rows, out_file, encoding='utf8'):
 if __name__ == '__main__':
     f = r"a.csv"
     rows = load_csv(f)
-    write_csv(rows, 'o.csv')
+    save_csv(rows, 'o.csv')
     print(rows)
