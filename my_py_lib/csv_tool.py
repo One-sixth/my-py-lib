@@ -19,9 +19,9 @@ def load_csv(csv_file, encoding='utf8'):
     return rows
 
 
-def save_csv(rows, out_file, encoding='utf8'):
-    if isinstance(out_file, str):
-        csv_file = open(out_file, 'w', encoding=encoding, newline='')
+def save_csv(rows, csv_file, encoding='utf8'):
+    if isinstance(csv_file, str):
+        csv_file = open(csv_file, 'w', encoding=encoding, newline='')
 
     csv_writer = csv.writer(csv_file)
     for row in rows:
