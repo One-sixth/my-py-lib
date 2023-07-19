@@ -27,14 +27,14 @@ def process_param_pts_2d(pts):
     return pts
 
 
-def process_param_classes(classes):
+def process_param_classes(classes, n_pts):
     '''
     通用处理类别号输入参数
     :param classes: 类别号输入，要求形状为 [N,]，可以是ndarray,tuple,list
     :return: 返回为 np.ndarray [N,],int32
     '''
     if classes is None:
-        classes = np.zeros([len(pts)], np.int32)
+        classes = np.zeros([n_pts], np.int32)
     if not isinstance(classes, np.ndarray):
         classes = np.asarray(classes, np.int32).reshape([-1])
     if np.issubdtype(classes.dtype, np.integer) and classes.dtype != np.int32:
@@ -97,7 +97,7 @@ def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, n
     pts = process_param_pts_2d(pts)
 
     # 处理类别号
-    classes = process_param_classes(classes)
+    classes = process_param_classes(classes, len(pts))
 
     # 处理颜色
     class_colors = process_param_colors_rgb(class_colors)
