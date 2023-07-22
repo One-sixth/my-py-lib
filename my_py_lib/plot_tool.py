@@ -5,6 +5,7 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+
 try:
     from .numpy_tool import tr_figure_to_array
 except ImportError:
@@ -71,7 +72,7 @@ def process_param_colors_rgb(colors):
 def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, name: str = 'scatter',
                     fig=None, ax=None, subplot=111, figsize=(8.00, 8.00), dpi=100, title=None,
                     xlabel=None, ylabel=None, legend=False, tight_layout=False,
-                    return_pic=False):
+                    return_pic=False, xlim=None, ylim=None):
     '''
     绘制散点图
     :param pts:         点坐标输入，要求形状为 [N, xy]，可以是ndarray,tuple,list
@@ -90,6 +91,8 @@ def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, n
     :param legend:      是否绘制图例
     :param tight_layout:是否自动优化布局
     :param return_pic:  是否额外返回绘制好的图像数组
+    :param xlim:        要求为 (min, max)，用于设定x轴最小最大坐标
+    :param ylim:        要求为 (min, max)，用于设定y轴最小最大坐标
     :return:
     '''
 
@@ -135,6 +138,12 @@ def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, n
     if ylabel is not None:
         ax.set_ylabel(ylabel)
 
+    if xlim is not None:
+        ax.set_xlim(*xlim)
+
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+
     # 对点分组
     groups_classes_pts = {}
     for c in uni_classes:
@@ -151,7 +160,7 @@ def plot_scatter_2d(pts, *, classes=None, class_colors=None, class_names=None, n
         if legend is True:
             # ax.legend(loc='upper right')  # 图例放在左上角，图内
             # ax.legend(loc=(1, 0))         # 图例从右下角开始，图外
-            ax.legend(loc='upper left', bbox_to_anchor=(1.01,1), borderaxespad=0)   # 图例从右上角开始，图外
+            ax.legend(loc='upper left', bbox_to_anchor=(1.01, 1), borderaxespad=0)  # 图例从右上角开始，图外
         elif isinstance(legend, dict):
             ax.legend(**legend)
 
