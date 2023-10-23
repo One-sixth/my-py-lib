@@ -25,17 +25,19 @@ try:
     import openslide as opsl
 except (ModuleNotFoundError, ImportError):
     opsl = VC()
-    opsl.OpenSlide = None
+    opsl.OpenSlide = VC
 
 try:
     import tiffslide as tisl
 except (ModuleNotFoundError, ImportError):
     tisl = VC()
-    tisl.TiffSlide = None
+    tisl.TiffSlide = VC
+    tisl.tiffslide = VC()
+    tisl.tiffslide.TiffSlide = VC
 
 
 def get_level0_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide]):
-    if isinstance(opsl_im, tisl.TiffSlide):
+    if isinstance(opsl_im, tisl.tiffslide.TiffSlide):
         prop_x, prop_y = tisl.PROPERTY_NAME_MPP_X, tisl.PROPERTY_NAME_MPP_Y
     elif isinstance(opsl_im, opsl.OpenSlide):
         prop_x, prop_y = opsl.PROPERTY_NAME_MPP_X, opsl.PROPERTY_NAME_MPP_Y
@@ -43,6 +45,7 @@ def get_level0_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide]):
         raise NotImplementedError('Error! Unsupported slide type.')
     x = opsl_im.properties[prop_x]
     y = opsl_im.properties[prop_y]
+    y, x = float(y), float(x)
     return y, x
 
 
@@ -135,7 +138,7 @@ def read_region_any_ds_v2(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide],
     # 这里需要使用round，因为大小需要比较准确，避免 511.99 被压到 511
     read_region_hw = round_int(region_hw * (ds_factor / level_downsamples[ds_level]), dtype=np.int64)
 
-    if isinstance(opsl_im, tisl.TiffSlide):
+    if isinstance(opsl_im, tisl.tiffslide.TiffSlide):
         patch = opsl_im.read_region(lv0_start_yx[::-1], ds_level, read_region_hw[::-1], as_array=True)
     else:
         patch = np.asarray(opsl_im.read_region(lv0_start_yx[::-1], ds_level, read_region_hw[::-1]))[..., :3]
@@ -276,7 +279,10 @@ def make_thumb_any_level(bim: Union[opsl.OpenSlide, tisl.TiffSlide],
 
         lv0_pos = round_int((yx_start+level_region_pos)[::-1] * to_lv0_factor)
 
-        tile = np.asarray(bim.read_region(lv0_pos, ds_level, tile_hw[::-1]))[..., :3]
+        try:
+            tile = np.asarray(bim.read_region(lv0_pos, ds_level, tile_hw[::-1]))[..., :3]
+        except Exception:
+            tile = np.zeros([*tile_hw, 3], dtype=np.uint8) * 255
 
         assert tile.shape[0] == tile_hw[0] and tile.shape[1] == tile_hw[1]
 
