@@ -16,7 +16,7 @@ import imageio.v3 as imageio
 
 
 class ImageFreeGaussFusionWrapper:
-    def __init__(self, coords, paths, im_ch=3, zone_size=None):
+    def __init__(self, coords, paths, im_ch=3, zone_size=None, dtype=np.uint8):
         '''
         :param coords:      坐标列表，要求格式为 [[y1x1y2x2], ...]
         :param paths:       图块的路径
@@ -32,6 +32,7 @@ class ImageFreeGaussFusionWrapper:
         self.coords = coords
         self.paths = paths
         self.im_ch = im_ch
+        self.dtype = dtype
 
         self.zones = None
         if zone_size is not None:
@@ -116,10 +117,10 @@ class ImageFreeGaussFusionWrapper:
         hw = (bbox[2] - bbox[0], bbox[3] - bbox[1])
 
         if len(paths) == 0:
-            return np.zeros([*hw, 3], dtype=np.uint8)
+            return np.zeros([*hw, 3], dtype=self.dtype)
 
         else:
-            cur_im = np.zeros([*hw, 3], dtype=np.float32)
+            cur_im = np.zeros([*hw, self.im_ch], dtype=np.float32)
             cur_mask = np.zeros([*hw, 1], dtype=np.float32)
 
             w_cur_im = ImageOverScanWrapper(cur_im)
@@ -143,7 +144,8 @@ class ImageFreeGaussFusionWrapper:
                 w_cur_mask.set(new_coord[:2], new_coord[2:], temp_mask)
 
             out_im = cur_im / np.clip(cur_mask, 1e-8, None)
-            out_im = np.round_(out_im).clip(0, 255).astype(np.uint8)
+            # out_im = np.round_(out_im).clip(0, 255).astype(np.uint8)
+            out_im = out_im.astype(self.dtype)
             return out_im
 
 

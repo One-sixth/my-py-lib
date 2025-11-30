@@ -15,6 +15,8 @@ opencv 的单个轮廓格式为 [N, 1, xy]
 '''
 
 import cv2
+import shapely
+
 assert cv2.__version__ >= '4.0'
 import numpy as np
 from typing import Iterable, List
@@ -87,7 +89,7 @@ def tr_my_to_polygon(my_contours):
             if not isinstance(p1, Polygon):
                 p1 = p.buffer(1)
             if not isinstance(p1, Polygon):
-                warnings.warn('Warning! Found an abnormal contour that cannot be converted directly to Polygon, currently will be forced to convex hull to allow it to be converted to Polygon')
+                # warnings.warn('Warning! Found an abnormal contour that cannot be converted directly to Polygon, currently will be forced to convex hull to allow it to be converted to Polygon')
                 p1 = p.convex_hull
             p = p1
         polygons.append(p)
@@ -161,7 +163,10 @@ def shapely_ensure_polygon_list(ps):
     :return:
     '''
     if isinstance(ps, Polygon):
-        ps = [ps]
+        if ps.is_empty:
+            ps = []
+        else:
+            ps = [ps]
     elif isinstance(ps, MultiPolygon):
         ps = list(ps.geoms)
     elif isinstance(ps, BaseMultipartGeometry):
@@ -762,6 +767,38 @@ def inter_contours_1toN(c1, batch_c):
     return cs
 
 
+def shapely_diff_contours_1toN(c1: Polygon, batch_c: List[Polygon]):
+    '''
+    计算一个轮廓与轮廓组的不相交轮廓
+    :param c1:
+    :param batch_c:
+    :return:
+    '''
+    cs = [c1]
+    for c in batch_c:
+        new_cs = []
+        for c2 in cs:
+            diff = c2.difference(c)
+            diff = shapely_ensure_polygon_list(diff)
+            new_cs.extend(diff)
+        cs = new_cs
+    return cs
+
+
+def diff_contours_1toN(c1, batch_c):
+    '''
+    计算一个轮廓与轮廓组的不相交轮廓
+    :param c1:
+    :param batch_c:
+    :return:
+    '''
+    c1 = tr_my_to_polygon([c1])[0]
+    batch_c = tr_my_to_polygon(batch_c)
+    cs = shapely_diff_contours_1toN(c1, batch_c)
+    cs = tr_polygons_to_my(cs)
+    return cs
+
+
 def shapely_morphology_contour(contour: Polygon, distance, resolution=16):
     '''
     对轮廓进行形态学操作，例如膨胀和腐蚀
@@ -772,7 +809,7 @@ def shapely_morphology_contour(contour: Polygon, distance, resolution=16):
     :param resolution:              分辨率
     :return:
     '''
-    out_c = contour.buffer(distance=distance, resolution=resolution)
+    out_c = contour.buffer(distance=distance, quad_segs=resolution)
     out_c = shapely_ensure_polygon_list(out_c)
     out_c = [c for c in out_c if not c.is_empty and c.is_valid and c.area > 0]
     return out_c
@@ -791,6 +828,37 @@ def morphology_contour(contour: np.ndarray, distance, resolution=16):
     c = tr_my_to_polygon([contour])[0]
     out_cs = shapely_morphology_contour(c, distance, resolution)
     out_cs = tr_polygons_to_my(out_cs, contour.dtype)
+    return out_cs
+
+
+def morphology_contours(contours: list[np.ndarray], distance, resolution=16, merge=True):
+    '''
+    对轮廓进行形态学操作，例如膨胀和腐蚀
+    对轮廓腐蚀操作后，可能会返回多个轮廓
+    因为可能返回多个轮廓，所以统一用list来包装
+    :param contours:                输入轮廓组
+    :param distance:                形态学操作距离
+    :param resolution:              分辨率
+    :return:
+    '''
+    if len(contours) > 0:
+        dtype = contours[0].dtype
+    else:
+        dtype = np.float32
+
+    cs = tr_my_to_polygon(contours)
+
+    out_cs = []
+    for c in cs:
+        out_cs.extend(shapely_morphology_contour(c, distance, resolution=resolution))
+
+    if len(out_cs) == 0:
+        return []
+    
+    if merge:
+        out_cs = shapely_merge_multi_contours(out_cs)
+    
+    out_cs = tr_polygons_to_my(out_cs, dtype)
     return out_cs
 
 

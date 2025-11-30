@@ -43,7 +43,19 @@ def split_file_path(p, base_dir=None):
     return base_dir, dir_path, basename, extname
 
 
-def insert_basename_end(p, s):
+def get_rel_path(p, base_dir):
+    '''
+    获得相对路径
+    :param p: 完整路径
+    :param base_dir: 基文件夹
+    :return:
+    '''
+    _, dir_path, basename, extname = split_file_path(p, base_dir)
+    rel_path = f'{dir_path}/{basename}{extname}'
+    return rel_path
+
+
+def insert_basename_end(p: str, s: str):
     '''
     在基本名后面插入字符串
 
@@ -56,9 +68,8 @@ def insert_basename_end(p, s):
     :param s: 要附加的字符串
     :return:
     '''
-    dir_path, basename, extname = split_file_path(p)
-    o = f'{dir_path}/{basename}{s}{extname}'
-    return o
+    wp = pathlib.Path(p)
+    return str(wp.with_stem(wp.stem+s))
 
 
 def insert_basename_ahead(p, s):
@@ -74,9 +85,8 @@ def insert_basename_ahead(p, s):
     :param s: 要附加的字符串
     :return:
     '''
-    dir_path, basename, extname = split_file_path(p)
-    o = f'{dir_path}/{s}{basename}{extname}'
-    return o
+    wp = pathlib.Path(p)
+    return str(wp.with_stem(s+wp.stem))
 
 
 def replace_extname(p, s):
@@ -133,7 +143,8 @@ def find_file_by_exts(dirs: Union[list[str], str], exts: Union[list[str], str], 
 
     files = []
     for dir in dirs:
-        for file in glob.glob(f'{dir}/**/*', recursive=recursive):
+        for file in pathlib.Path(dir).rglob('*'):
+            file = str(file)
             ext = os.path.splitext(file)[1]
             if ignore_case:
                 ext = ext.lower()

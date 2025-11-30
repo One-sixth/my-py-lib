@@ -11,6 +11,6 @@ setup(
     url='https://github.com/One-sixth/my-py-lib',
     install_requires=[],
     entry_points={'console_scripts': []},
-    packages=['my_py_lib'],
+    packages=['my_py_lib', 'my_py_lib/dataset'],
     package_data={},
 )

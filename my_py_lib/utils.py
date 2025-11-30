@@ -5,6 +5,8 @@
 
 '''
 
+import sys
+from contextlib import contextmanager
 
 
 def range_mapping(x, x_min, x_max, y_min, y_max):
@@ -106,3 +108,17 @@ def tf_force_use_cpu():
     #关闭gpu加速
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
+
+@contextmanager
+def temp_add_sys_path(path=None):
+    '''
+    临时添加包含路径
+    '''
+    if isinstance(path, str):
+        path = [path]
+    sys.path.extend(path)
+    yield
+    for p in path:
+        sys.path.remove(p)
+    

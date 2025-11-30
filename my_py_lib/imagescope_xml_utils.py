@@ -92,7 +92,7 @@ class ImageScopeXmlReader:
                         x = int(float(vertex.attrib['X']))
                         y = int(float(vertex.attrib['Y']))
                         arrow_head_tail_points.append((y, x))
-                    arrow_points = np.asarray(arrow_head_tail_points, np.int)
+                    arrow_points = np.asarray(arrow_head_tail_points, np.int64)
                     if not self.keep_arrow_tail:
                         arrow_points = arrow_points[0]
                     self.arrow_color_regs[color_tuple].append(arrow_points)
@@ -105,7 +105,7 @@ class ImageScopeXmlReader:
                         x = int(float(vertex.attrib['X']))
                         y = int(float(vertex.attrib['Y']))
                         box_points.append((y, x))
-                    box_points = np.asarray(box_points, np.int)
+                    box_points = np.asarray(box_points, np.int64)
                     if self.use_box_y1x1y2x2:
                         y1, x1 = box_points[0]
                         y2, x2 = box_points[2]
@@ -120,7 +120,7 @@ class ImageScopeXmlReader:
                         x = int(float(vertex.attrib['X']))
                         y = int(float(vertex.attrib['Y']))
                         contours.append((y, x))
-                    contours = np.asarray(contours, np.int)
+                    contours = np.asarray(contours, np.int64)
                     self.contour_color_regs[color_tuple].append(contours)
 
                 elif reg_type == TYPE_ELLIPSE:
@@ -131,7 +131,7 @@ class ImageScopeXmlReader:
                         x = int(float(vertex.attrib['X']))
                         y = int(float(vertex.attrib['Y']))
                         ellipse.append((y, x))
-                    ellipse = np.asarray(ellipse, np.int)
+                    ellipse = np.asarray(ellipse, np.int64)
                     self.ellipse_color_regs[color_tuple].append(ellipse)
 
                 else:

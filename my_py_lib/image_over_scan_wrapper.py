@@ -93,14 +93,15 @@ class ImageOverScanWrapper:
         if any(np.int32(real_yx_end) - np.int32(real_yx_start) < 1):
             return
 
-        pr: np.ndarray = pr[real_yx_start[0]: real_yx_end[0], real_yx_start[1]: real_yx_end[1]]
+        # pr: np.ndarray = pr[real_yx_start[0]: real_yx_end[0], real_yx_start[1]: real_yx_end[1]]
 
         top, left = real_yx_start - yx_start
         bottom, right = yx_end - real_yx_end
 
         crop_r = new_im[top: new_im.shape[0] - bottom, left: new_im.shape[1] - right]
 
-        pr[:] = crop_r
+        # pr[:] = crop_r
+        pr[real_yx_start[0]: real_yx_end[0], real_yx_start[1]: real_yx_end[1]] = crop_r
 
     @property
     def data(self):

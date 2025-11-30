@@ -11,13 +11,13 @@ def _type_size(T):
 	:param T:
 	:return:
 	'''
-	if T in {np.int32, np.uint32, np.float32}:
+	if T in (np.int32, np.uint32, np.float32):
 		T_size = 4
-	elif T in {np.int16, np.uint16, np.float16}:
+	elif T in (np.int16, np.uint16, np.float16):
 		T_size = 2
-	elif T in {np.int8, np.uint8, np.bool_}:
+	elif T in (np.int8, np.uint8, np.bool_):
 		T_size = 1
-	elif T in {np.int64, np.uint64, np.float64}:
+	elif T in (np.int64, np.uint64, np.float64):
 		T_size = 8
 	else:
 		raise RuntimeError('Error! Unsupported type.')
@@ -27,8 +27,8 @@ def _type_size(T):
 def Size(f: io.FileIO):
 	'''
 	获得文件大小
-	:param f: 
-	:return: 
+	:param f:
+	:return:
 	'''
 	cur_pos = f.tell()
 	f.seek(0, io.SEEK_END)
@@ -40,8 +40,8 @@ def Size(f: io.FileIO):
 def RemainingSize(f: io.FileIO):
 	'''
 	获得文件剩余大小
-	:param f: 
-	:return: 
+	:param f:
+	:return:
 	'''
 	pos_begin = f.tell()
 	f.seek(0, io.SEEK_END)
@@ -50,7 +50,7 @@ def RemainingSize(f: io.FileIO):
 	return size
 
 
-def ReadAll(f: io.FileIO, size_limit=np.uint64(-1)):
+def ReadAll(f: io.FileIO, size_limit=np.iinfo(np.uint64).max):
 	'''
 	从文件流里读入一些字节
 	:param f:
@@ -98,7 +98,7 @@ def ReadType(f: io.FileIO, T: np.dtype):
 	'''
 	T_size = _type_size(T)
 	buf = Read(f, T_size)
-	return np.frombuffer(buf, T, 1)
+	return np.frombuffer(buf, T, 1)[0]
 
 
 def WriteType(f: io.FileIO, data: np.ndarray):

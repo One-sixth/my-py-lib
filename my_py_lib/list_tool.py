@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Iterable
 import math
 
@@ -151,6 +152,19 @@ def list_fill(self: list, value, copy=False):
     return self
 
 
+def list_where(self: list, value=None):
+    ids = []
+    if value is None:
+        for i, v in enumerate(self):
+            if bool(v):
+                ids.append(i)
+    else:
+        for i, v in enumerate(self):
+            if v == value:
+                ids.append(i)
+    return ids
+
+
 if __name__ == '__main__':
     a = [1, 2, 3, 4, 5, 6]
     b = list_multi_get_with_ids(a, [0, 2, 4])
@@ -204,3 +218,7 @@ if __name__ == '__main__':
     a2 = [1,2,3,4,5]
     b = list_fill(a2, 10)
     assert b == [10, 10, 10, 10, 10]
+
+    a2 = [1,[2,3],3,4,5,[2,3]]
+    b = list_where(a2, [2,3])
+    assert b == [1, 5]

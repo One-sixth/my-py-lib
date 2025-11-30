@@ -106,7 +106,12 @@ def show_image(img, title='show_img', wait=0):
     :param img: numpy array
     :return: None
     """
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    if img.ndim == 3:
+        if img.shape[-1] == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        elif img.shape[-1] == 4:
+            img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+
     cv2.imshow(title, img)
     cv2.waitKey(wait)
 

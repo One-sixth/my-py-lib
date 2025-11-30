@@ -81,7 +81,7 @@ def get_tissue_contours(im,
     else:
         for i, cont in enumerate(contours):
             contour_area = cv2.contourArea(cont)
-            factor = float(contour_area) / np.prod(im.shape[:2], dtype=np.float)
+            factor = float(contour_area) / np.prod(im.shape[:2], dtype=np.float32)
             if debug_show:
                 print(contour_area, '{:.3f}'.format(factor))
             if factor > area_thresh:
