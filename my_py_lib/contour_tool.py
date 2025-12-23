@@ -20,8 +20,8 @@ import shapely
 assert cv2.__version__ >= '4.0'
 import numpy as np
 from typing import Iterable, List
-from shapely.geometry import Polygon, MultiPolygon, MultiPoint, Point, LineString, LinearRing
-from shapely.geometry.base import BaseMultipartGeometry
+from shapely.geometry import Polygon, MultiPolygon, MultiPoint, Point, LineString, MultiLineString, LinearRing, GeometryCollection
+from shapely.affinity import rotate as shapely_rotate, scale as shapely_scale
 from shapely.ops import unary_union
 import warnings
 try:
@@ -57,6 +57,15 @@ def tr_cv_to_my_contours(cv_contours):
     return out_contours
 
 
+def tr_cv_to_polygon(cv_contours: list[np.ndarray]) -> list[Polygon]:
+    poly_list = []
+    for c in cv_contours:
+        poly = Polygon(c[:, 0])
+        assert poly.is_valid and poly.area > 0, 'Error! Found bad polygon'
+        poly_list.append(poly)
+    return poly_list
+
+
 def tr_my_to_cv_contours(my_contours):
     '''
     轮廓格式转换，转换我的格式到opencv的格式
@@ -80,14 +89,12 @@ def tr_my_to_polygon(my_contours):
             c = c.astype(np.float32)
         # 如果点数少于3个，就先转化为多个点，然后buffer(1)转化为轮廓，可能得到MultiPolygon，使用convex_hull得到凸壳
         if len(c) < 3 or calc_contour_area(c) == 0:
-            p = MultiPoint(c[:, ::-1]).buffer(1).convex_hull
+            p = MultiPoint(c[:, ::-1]).buffer(1e-4).convex_hull
         else:
             p = Polygon(c[:, ::-1])
         if not p.is_valid:
             # 如果轮廓在buffer(0)后变成了MultiPolygon，则尝试buffer(1)，如果仍然不能转换为Polygon，则将轮廓转换为凸壳，强制转换为Polygon
-            p1 = p.buffer(0)
-            if not isinstance(p1, Polygon):
-                p1 = p.buffer(1)
+            p1 = shapely_try_fix_polygon(p)
             if not isinstance(p1, Polygon):
                 # warnings.warn('Warning! Found an abnormal contour that cannot be converted directly to Polygon, currently will be forced to convex hull to allow it to be converted to Polygon')
                 p1 = p.convex_hull
@@ -96,7 +103,7 @@ def tr_my_to_polygon(my_contours):
     return polygons
 
 
-def tr_polygons_to_my(polygons: List[Polygon], dtype: np.dtype=np.float32):
+def tr_polygons_to_my(polygons: List[Polygon], dtype: np.dtype=np.float64):
     '''
     转换shapely的多边形到我的格式
     :param polygons:
@@ -114,7 +121,7 @@ def tr_polygons_to_my(polygons: List[Polygon], dtype: np.dtype=np.float32):
     return my_contours
 
 
-def tr_polygons_to_cv(polygons: List[Polygon], dtype=np.float32):
+def tr_polygons_to_cv(polygons: List[Polygon], dtype=np.float64):
     '''
     转换shapely的多边形到opencv格式
     :param polygons:
@@ -155,7 +162,55 @@ def tr_linering_to_my(linerings: List[LineString], dtype=np.float32):
     return cs
 
 
-def shapely_ensure_polygon_list(ps):
+def shapely_try_fix_polygon(poly: Polygon|MultiPolygon, buffer_0=True, buffer_eps=1e-4, convex_hull=True):
+    '''
+    尝试修复polygon
+    :param poly:
+    :return:
+    '''
+    ori_type = type(poly)
+    assert isinstance(poly, (Polygon, MultiPolygon))
+    if buffer_0:
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+
+    if buffer_eps > 0:
+        if not poly.is_valid:
+            poly = poly.buffer(buffer_eps)
+
+    if ori_type != MultiPolygon and convex_hull:
+        if not poly.is_valid:
+            poly = poly.convex_hull
+
+    return poly
+
+
+# def shapely_ensure_polygon_list(ps):
+#     '''
+#     确保返回值是 List[Polygon]
+#     本函数目的是减少shapely返回值可能是任何类的问题
+#     :param ps:
+#     :return:
+#     '''
+#     if isinstance(ps, Polygon):
+#         if ps.is_empty:
+#             ps = []
+#         else:
+#             ps = [ps]
+#     elif isinstance(ps, MultiPolygon):
+#         ps = list(ps.geoms)
+#     elif isinstance(ps, GeometryCollection):
+#         ps = [p for p in ps.geoms if isinstance(p, Polygon)]
+#     elif isinstance(ps, Iterable):
+#         ps = [p for p in ps if isinstance(p, Polygon)]
+#     elif isinstance(ps, (Point, LineString, LinearRing)):
+#         ps = []
+#     else:
+#         raise RuntimeError('Error! Bad input in shapely_ensure_polygon_list.', str(type(ps)), ps)
+#     return ps
+
+
+def shapely_ensure_polygon_list(ps) -> list[Polygon]:
     '''
     确保返回值是 List[Polygon]
     本函数目的是减少shapely返回值可能是任何类的问题
@@ -163,21 +218,138 @@ def shapely_ensure_polygon_list(ps):
     :return:
     '''
     if isinstance(ps, Polygon):
-        if ps.is_empty:
-            ps = []
-        else:
+        if ps.is_valid and ps.area > 0:
             ps = [ps]
+        else:
+            ps = []
     elif isinstance(ps, MultiPolygon):
-        ps = list(ps.geoms)
-    elif isinstance(ps, BaseMultipartGeometry):
-        ps = [p for p in ps.geoms if isinstance(p, Polygon)]
+        ps = [p for p in ps.geoms if p.is_valid and p.area > 0]
+    elif isinstance(ps, GeometryCollection):
+        tmp = []
+        for p in ps.geoms:
+            if isinstance(p, LinearRing):
+                p = Polygon(p)
+            if isinstance(p, Polygon) and p.is_valid and p.area > 0:
+                tmp.append(p)
+        ps = tmp
     elif isinstance(ps, Iterable):
-        ps = [p for p in ps if isinstance(p, Polygon)]
-    elif isinstance(ps, (Point, LineString, LinearRing)):
+        tmp = []
+        for p in ps:
+            if isinstance(p, LinearRing):
+                p = Polygon(p)
+            if isinstance(p, Polygon) and p.is_valid and p.area > 0:
+                tmp.append(p)
+        ps = tmp
+    elif isinstance(ps, (Point, LineString, MultiPoint, MultiLineString)):
         ps = []
+    elif isinstance(ps, LinearRing):
+        p = Polygon(ps)
+        if p.is_valid and p.area > 0:
+            ps = [p]
+        else:
+            ps = []
     else:
         raise RuntimeError('Error! Bad input in shapely_ensure_polygon_list.', str(type(ps)), ps)
     return ps
+
+
+def shapely_drop_polygons_hole(polys: list[Polygon]):
+    out = [shapely_drop_polygon_hole(poly) for poly in polys]
+    return out
+
+
+def shapely_drop_polygon_hole(poly: Polygon):
+    return shapely.Polygon(poly.exterior)
+
+
+def shapely_find_contours(
+        im: np.ndarray,
+        outer_simple:float=None, outer_area_threshold:float=None,
+        inner_simple:float=None, inner_area_threshold:float=None,
+    ) -> list[Polygon]:
+    '''
+    生成多个带孔多边形
+    :param im:
+    :return:
+    '''
+    # hierarchy shape[N, 4] [Next， Previous， First_Child， Parent]
+    cv_conts, hierarchy = cv2.findContours(im, mode=cv2.RETR_CCOMP, method=cv2.CHAIN_APPROX_SIMPLE)
+    if len(cv_conts) == 0:
+        return []
+
+    hierarchy = hierarchy[0]
+
+    output_polygons = []
+
+    for hi, h in enumerate(hierarchy):
+        next_i, perv_i, first_child_i, parent_i = h
+        if parent_i == -1:
+            outer_cont = cv_conts[hi]
+
+            if outer_simple is not None:
+                outer_cont = cv2.approxPolyDP(outer_cont, outer_simple, True)
+
+            if not cv_is_valid_contour(outer_cont):
+                continue
+
+            if outer_area_threshold is not None and cv2.contourArea(outer_cont) < outer_area_threshold:
+                continue
+
+            # 因为有些外轮廓会粘连，cv认为是一个轮廓，但是shapely认为是两个轮廓，所以需要特别处理
+            outer_polys = []
+            inner_polys = []
+
+            # 处理外部轮廓
+            poly = Polygon(outer_cont[:, 0])
+            if not poly.is_valid:
+                for p in GeometryCollection(poly.buffer(1e-4)).geoms:
+                    if isinstance(p, Polygon) and p.is_valid:
+                        outer_polys.append(p)
+            else:
+                outer_polys.append(poly)
+
+            # 处理内部轮廓
+            if len(outer_polys) > 0:
+                next_child_i = first_child_i
+                while next_child_i != -1:
+                    inner_cont = cv_conts[next_child_i]
+                    next_child_i = hierarchy[next_child_i][0]
+
+                    if inner_simple is not None:
+                        inner_cont = cv2.approxPolyDP(inner_cont, inner_simple, True)
+
+                    if not cv_is_valid_contour(inner_cont):
+                        continue
+
+                    if inner_area_threshold is not None and cv2.contourArea(inner_cont) < inner_area_threshold:
+                        continue
+
+                    poly = Polygon(inner_cont[:, 0])
+                    if not poly.is_valid:
+                        for p in GeometryCollection(poly.buffer(1e-4)).geoms:
+                            if isinstance(p, Polygon) and p.is_valid:
+                                inner_polys.append(p)
+                    else:
+                        inner_polys.append(poly)
+
+            # 生成多边形
+            if len(inner_polys) > 0:
+                inner_geoms = MultiPolygon(inner_polys)
+                if not inner_geoms.is_valid:
+                    inner_geoms = inner_geoms.buffer(1e-4)
+                assert inner_geoms.is_valid
+            else:
+                inner_geoms = None
+
+            for outer_poly in outer_polys:
+                if inner_geoms is None:
+                    output_polygons.append(outer_poly)
+                else:
+                    diff_geoms = GeometryCollection(outer_poly.difference(inner_geoms))
+                    diff_polys = [p for p in diff_geoms.geoms if isinstance(p, Polygon) and p.is_valid]
+                    output_polygons.extend(diff_polys)
+
+    return output_polygons
 
 
 def find_contours(im, mode, method, keep_invalid_contour=False):
@@ -281,13 +453,23 @@ def simple_contours(contours, epsilon=0):
     :param epsilon:
     :return:
     '''
-    # 简化轮廓，目前用于缩放后去除重叠点，并不进一步简化
-    # epsilon=0 代表只去除重叠点
     contours = tr_my_to_cv_contours(contours)
-    out = []
-    for c in contours:
-        out.append(cv2.approxPolyDP(c, epsilon, True))
+    out = cv_simple_contours(contours, epsilon)
     out = tr_cv_to_my_contours(out)
+    return out
+
+
+def cv_simple_contours(cv_contours: list[np.ndarray], epsilon=0):
+    '''
+    简化轮廓，当俩个点的距离小于等于 epsilon 时，会融合这俩个点。
+    epsilon=0 代表只消除重叠点
+    :param contours:
+    :param epsilon:
+    :return:
+    '''
+    out = []
+    for c in cv_contours:
+        out.append(cv2.approxPolyDP(c, epsilon, True))
     return out
 
 
@@ -330,7 +512,7 @@ def calc_contour_area(contour: np.ndarray):
     :param contour: 输入一个轮廓
     :return:
     '''
-    area = cv2.contourArea(tr_my_to_cv_contours([contour])[0])
+    area = cv2.contourArea(tr_my_to_cv_contours([contour])[0].astype(np.float32))
     return area
 
 
@@ -516,6 +698,38 @@ def draw_contours(im, contours, color, thickness=2, copy=False):
     return im
 
 
+def shapely_draw_contours(
+    im: np.ndarray, contours: list[shapely.Polygon],
+    outer_color=None, outer_thickness=-1,
+    inner_color=None, inner_thickness=-1,
+    copy=False
+):
+    if copy:
+        im = im.copy()
+
+    if outer_color is None:
+        outer_color = 2
+    if inner_color is None:
+        inner_color = 1
+
+    outer_conts = []
+    inner_conts = []
+    for poly in contours:
+        p1 = shapely.Polygon(poly.exterior)
+        if p1.area > 0:
+            outer_conts.append(p1)
+            for p2 in poly.interiors:
+                p2 = shapely.Polygon(p2)
+                if p2.area > 0:
+                    inner_conts.append(p2)
+
+    outer_conts = tr_polygons_to_my(outer_conts)
+    inner_conts = tr_polygons_to_my(inner_conts)
+    im = draw_contours(im, outer_conts, outer_color, outer_thickness, copy=False)
+    im = draw_contours(im, inner_conts, inner_color, inner_thickness, copy=False)
+    return im
+
+
 def shapely_calc_distance_with_contours_1toN(c1: Polygon, batch_c: Iterable[Polygon]):
     '''
     求一个轮廓和一组轮廓的IOU分数，原型
@@ -571,21 +785,59 @@ def calc_iou_with_contours_NtoM(contours1, contours2):
     return pair_ious
 
 
-def shapely_calc_occupancy_ratio(contour1, contour2):
+def shapely_calc_occupancy_ratio_1to1(contours_1: Polygon | MultiPolygon, contours_2: Polygon | MultiPolygon) -> float:
     '''
-    计算轮廓1和轮廓2的相交区域与轮廓2的占比，原型
-    :param contour1: polygon多边形1
-    :param contour2: polygon多边形1
-    :return:    IOU分数
+    计算多个轮廓中，某个轮廓所占的总比例
+    :param contours_1:
+    :param contours_2:
+    :return:
     '''
-    c1 = contour1
-    c2 = contour2
-    if not c1.intersects(c2):
+    if isinstance(contours_1, Polygon):
+        contours_1 = MultiPolygon([contours_1])
+    else:
+        contours_1 = MultiPolygon(contours_1)
+
+    if isinstance(contours_2, Polygon):
+        contours_2 = MultiPolygon([contours_2])
+    else:
+        contours_2 = MultiPolygon(contours_2)
+
+    contours_1 = shapely_try_fix_polygon(contours_1)
+    contours_2 = shapely_try_fix_polygon(contours_2)
+
+    assert contours_1.is_valid
+    assert contours_2.is_valid
+
+    if not contours_1.intersects(contours_2):
         return 0.
-    area2 = c2.area
-    inter_area = c1.intersection(c2).area
+
+    area2 = contours_2.area
+    inter_area = contours_1.intersection(contours_2).area
     ratio = inter_area / max(area2, 1e-8)
     return ratio
+
+
+shapely_calc_occupancy_ratio = shapely_calc_occupancy_ratio_1to1
+
+# def shapely_calc_occupancy_ratio(contour1, contour2):
+#     '''
+#     计算轮廓1和轮廓2的相交区域与轮廓2的占比，原型
+#     :param contour1: polygon多边形1
+#     :param contour2: polygon多边形1
+#     :return:    IOU分数
+#     '''
+#     c1 = contour1
+#     c2 = contour2
+#     if not c1.intersects(c2):
+#         return 0.
+#     area2 = c2.area
+#     try:
+#         inter_area = c1.intersection(c2).area
+#     except shapely.errors.GEOSException as e:
+#         print('Error!', str(e))
+#         return 0.
+#     ratio = inter_area / max(area2, 1e-8)
+#     return ratio
 
 
 def calc_occupancy_ratio(contour1, contour2):
@@ -862,7 +1114,7 @@ def morphology_contours(contours: list[np.ndarray], distance, resolution=16, mer
     return out_cs
 
 
-def shapely_is_valid_contours(polygons: List[Polygon]):
+def shapely_is_valid_contours(polygons: list[Polygon]):
     '''
     检查每个轮廓是否是有效的
     :param contours:            Polygon列表
@@ -877,19 +1129,35 @@ def shapely_is_valid_contours(polygons: List[Polygon]):
     return bs
 
 
-def is_valid_contours(contours):
+def is_valid_contours(contours: list[np.ndarray]):
     '''
     检查每个轮廓是否是有效的
     :param contours:            轮廓列表
     :return: bools              布尔列表
     '''
-    bs = []
-    for c in contours:
-        if len(c) < 3 or calc_contour_area(c) <= 0:
-            bs.append(False)
-        else:
-            bs.append(True)
-    return bs
+    cv_contours = tr_my_to_cv_contours(contours)
+    return [cv_is_valid_contour(c) for c in cv_contours]
+
+
+def is_valid_contour(contour: np.ndarray):
+    '''
+    检查轮廓是否是有效的
+    :param contour:            轮廓
+    :return: bool              布尔
+    '''
+    # cv_contour = tr_my_to_cv_contours([contour])[0]
+    assert contour.ndim == 2
+    return cv_is_valid_contour(contour[:, None])
+
+
+def cv_is_valid_contour(cv_contour: np.ndarray):
+    '''
+    检查轮廓是否是有效的
+    :param contour:            轮廓
+    :return: bool              布尔
+    '''
+    assert cv_contour.ndim == 3
+    return len(cv_contour) >= 3 and cv2.contourArea(cv_contour) > 0
 
 
 def is_contours_too_close_border(contours, hw, factor):
