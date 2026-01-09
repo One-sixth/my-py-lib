@@ -89,16 +89,25 @@ def tr_my_to_polygon(my_contours):
             c = c.astype(np.float32)
         # 如果点数少于3个，就先转化为多个点，然后buffer(1)转化为轮廓，可能得到MultiPolygon，使用convex_hull得到凸壳
         if len(c) < 3 or calc_contour_area(c) == 0:
-            p = MultiPoint(c[:, ::-1]).buffer(1e-4).convex_hull
+            p = MultiPoint(c[:, ::-1]).buffer(1).convex_hull
         else:
             p = Polygon(c[:, ::-1])
+
         if not p.is_valid:
+            # try simple fix
+            simp_c = simple_contour(c, 1)
+            if len(simp_c) < 3:
+                p = MultiPoint(c[:, ::-1]).buffer(1).convex_hull
+            else:
+                p = Polygon(simp_c[:, ::-1])
+
             # 如果轮廓在buffer(0)后变成了MultiPolygon，则尝试buffer(1)，如果仍然不能转换为Polygon，则将轮廓转换为凸壳，强制转换为Polygon
-            p1 = shapely_try_fix_polygon(p)
-            if not isinstance(p1, Polygon):
-                # warnings.warn('Warning! Found an abnormal contour that cannot be converted directly to Polygon, currently will be forced to convex hull to allow it to be converted to Polygon')
-                p1 = p.convex_hull
-            p = p1
+            if not p.is_valid:
+                p1 = shapely_try_fix_polygon(p)
+                if not isinstance(p1, Polygon):
+                    # warnings.warn('Warning! Found an abnormal contour that cannot be converted directly to Polygon, currently will be forced to convex hull to allow it to be converted to Polygon')
+                    p1 = p.convex_hull
+                p = p1
         polygons.append(p)
     return polygons
 
@@ -170,6 +179,7 @@ def shapely_try_fix_polygon(poly: Polygon|MultiPolygon, buffer_0=True, buffer_ep
     '''
     ori_type = type(poly)
     assert isinstance(poly, (Polygon, MultiPolygon))
+
     if buffer_0:
         if not poly.is_valid:
             poly = poly.buffer(0)
@@ -443,6 +453,20 @@ def make_bboxes_from_contours(contours):
     bboxes = [make_bbox_from_contour(c) for c in contours]
     bboxes = np.asarray(bboxes)
     return bboxes
+
+
+def simple_contour(contour, epsilon=0):
+    '''
+    简化轮廓，当俩个点的距离小于等于 epsilon 时，会融合这俩个点。
+    epsilon=0 代表只消除重叠点
+    :param contour:
+    :param epsilon:
+    :return:
+    '''
+    tmp_c = contour[:, None, ::-1]
+    out = cv2.approxPolyDP(tmp_c, epsilon, True)
+    out = out[:, 0, ::-1]
+    return out
 
 
 def simple_contours(contours, epsilon=0):
