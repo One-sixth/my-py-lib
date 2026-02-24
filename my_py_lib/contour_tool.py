@@ -749,8 +749,10 @@ def shapely_draw_contours(
 
     outer_conts = tr_polygons_to_my(outer_conts)
     inner_conts = tr_polygons_to_my(inner_conts)
-    im = draw_contours(im, outer_conts, outer_color, outer_thickness, copy=False)
-    im = draw_contours(im, inner_conts, inner_color, inner_thickness, copy=False)
+    if outer_thickness != 0:
+        im = draw_contours(im, outer_conts, outer_color, outer_thickness, copy=False)
+    if inner_thickness != 0:
+        im = draw_contours(im, inner_conts, inner_color, inner_thickness, copy=False)
     return im
 
 
@@ -1311,6 +1313,66 @@ def get_contours_shortest_link_pair(contours1, contours2, iou_th: float, *, pair
 
     out_contact_ids1, out_contact_ids2, out_contact_iou = universal_get_shortest_link_pair(pair_ious, iou_th, np.greater)
     return out_contact_ids1, out_contact_ids2, out_contact_iou
+
+
+def split_outer_inner_conts(conts, inner_oc=0.85, outer_oc=0.15):
+    '''
+    把一组轮廓分离为 外轮廓和内轮廓
+    :param conts:       输入轮廓
+    :param inner_oc:    占小轮廓比例
+    :param outer_oc:    占大轮廓比例
+    :return: 返回格式，[outer_cont1, outer_cont2], [[inner_cont1, inner_cont2], [inner_cont3]]
+    当不能大小轮廓不完全包含的时候，inner_oc，outer_oc两个参数将辅助判定
+    如果 大小轮廓重叠区域大于 小轮廓的 inner_oc 占比，并且 小于大轮廓的 outer_oc 占比，则判定小轮廓仍然是该大轮廓的内区域
+    inner_oc
+    '''
+    # 通过保留原始轮廓，来处理，避开转换导致的问题
+    polys = tr_my_to_polygon(conts)
+    sorted_ids = np.argsort([c.area for c in polys])
+    sorted_ids = list(sorted_ids[::-1])
+    sorted_polys = [polys[i] for i in sorted_ids]
+
+    outer = []
+    outer_ids = []
+    inner = []
+    inner_ids = []
+
+    while len(sorted_polys) > 0:
+        p: Polygon
+        c = sorted_polys.pop(0)
+        cix = sorted_ids.pop(0)
+
+        if len(outer) == 0:
+            outer.append(c)
+            outer_ids.append(cix)
+
+        else:
+            is_inner = False
+            for p, pix in zip(outer, outer_ids):
+                p: Polygon
+                if p.contains(c):
+                    is_inner = True
+                    break
+                else:
+                    # 如果单向占比大于85%，也视为内轮廓
+                    outer_area = p.area
+                    inner_area = c.area
+                    cover_area = p.intersection(c).area
+                    if cover_area / inner_area > inner_oc and cover_area / outer_area < outer_oc:
+                        is_inner = True
+                        break
+
+            if is_inner:
+                inner.append(c)
+                inner_ids.append(cix)
+            else:
+                outer.append(c)
+                outer_ids.append(cix)
+
+    out_outer = [conts[i] for i in outer_ids]
+    out_inner = [conts[i] for i in inner_ids]
+
+    return out_outer, out_inner
     
 
 if __name__ == '__main__':
