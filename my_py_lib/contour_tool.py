@@ -20,8 +20,9 @@ import shapely
 assert cv2.__version__ >= '4.0'
 import numpy as np
 from typing import Iterable, List
+from shapely.geometry.base import BaseGeometry
 from shapely.geometry import Polygon, MultiPolygon, MultiPoint, Point, LineString, MultiLineString, LinearRing, GeometryCollection
-from shapely.affinity import rotate as shapely_rotate, scale as shapely_scale
+from shapely.affinity import rotate as shapely_rotate, scale as shapely_scale, translate as shapely_translate
 from shapely.ops import unary_union
 import warnings
 try:
@@ -386,6 +387,23 @@ def find_contours(im, mode, method, keep_invalid_contour=False):
     return valid_contours
 
 
+def shapely_offset_polygon(poly, ori_yx=(0, 0), new_ori_yx=(0, 0)):
+    '''
+    重定位轮廓位置
+    :param poly:        一个多边形，或其他基本图元
+    :param ori_yx:      旧轮廓的起点
+    :param new_ori_yx:  新起点
+    :return:
+    '''
+    assert isinstance(poly, BaseGepmetry)
+    ori_yx = np.float64(ori_yx).reshape([2])
+    new_ori_yx = np.float64(new_ori_yx).reshape([2])
+    
+    vec = new_ori_yx - ori_yx
+    poly = shapely_translate(poly, vec[1], vec[0])
+    return poly
+
+
 def offset_contours(contours, ori_yx=(0, 0), new_ori_yx=(0, 0)):
     '''
     重定位轮廓位置
@@ -497,36 +515,55 @@ def cv_simple_contours(cv_contours: list[np.ndarray], epsilon=0):
     return out
 
 
-def _resize_contour(contour, scale_factor_hw, offset_yx, dtype):
-    return ((contour - offset_yx) * scale_factor_hw + offset_yx).astype(dtype)
+def shapely_resize_polygon(poly, scale_factor_hw=1.0, origin_yx=(0, 0)):
+    '''
+    缩放轮廓
+    :param poly: 输入一个多边形 或 其他图元
+    :param scale_factor_hw: 缩放倍数
+    :param origin_yx: 偏移位置，默认为左上角(0, 0)
+    :return:
+    '''
+    assert isinstance(poly, (Polygon, MultiPolygon, GeometryCollection, LinearRing))
+    if isinstance(scale_factor_hw, (int, float)):
+        scale_factor_hw = [scale_factor_hw, scale_factor_hw]
+        
+    scale_factor_hw = np.asarray(scale_factor_hw).reshape([2])
+    origin_yx = np.asarray(origin_yx, np.float32).reshape([2])
+    
+    out = shapely_scale(poly, scale_factor_hw[1], scale_factor_hw[0], origin=tuple(origin_yx[::-1]))
+    return out
 
 
-def resize_contour(contour, scale_factor_hw=1.0, offset_yx=(0, 0)):
+def _resize_contour(contour, scale_factor_hw, origin_yx, dtype):
+    return ((contour - origin_yx) * scale_factor_hw + origin_yx).astype(dtype)
+
+
+def resize_contour(contour, scale_factor_hw=1.0, origin_yx=(0, 0)):
     '''
     缩放轮廓
     :param contour: 输入一个轮廓
     :param scale_factor_hw: 缩放倍数
-    :param offset_yx: 偏移位置，默认为左上角(0, 0)
+    :param origin_yx: 缩放中心位置，默认为左上角(0, 0)
     :return:
     '''
     assert isinstance(contour, np.ndarray) and contour.ndim == 2 and contour.shape[-1] == 2
     scale_factor_hw = np.asarray(scale_factor_hw).reshape([1, -1])
-    offset_yx = np.asarray(offset_yx, np.float32).reshape([1, 2])
-    out = _resize_contour(contour, scale_factor_hw, offset_yx, contour.dtype)
+    origin_yx = np.asarray(origin_yx, np.float32).reshape([1, 2])
+    out = _resize_contour(contour, scale_factor_hw, origin_yx, contour.dtype)
     return out
 
 
-def resize_contours(contours, scale_factor_hw=1.0, offset_yx=(0, 0)):
+def resize_contours(contours, scale_factor_hw=1.0, origin_yx=(0, 0)):
     '''
     缩放轮廓
     :param contours: 输入一组轮廓
     :param scale_factor_hw: 缩放倍数
-    :param offset_yx: 偏移位置，默认为左上角(0, 0)
+    :param origin_yx: 偏移位置，默认为左上角(0, 0)
     :return:
     '''
     scale_factor_hw = np.asarray(scale_factor_hw).reshape([1, -1])
-    offset_yx = np.asarray(offset_yx, np.float32).reshape([1, 2])
-    out = [_resize_contour(c, scale_factor_hw, offset_yx, contours[0].dtype) for c in contours]
+    origin_yx = np.asarray(origin_yx, np.float32).reshape([1, 2])
+    out = [_resize_contour(c, scale_factor_hw, origin_yx, contours[0].dtype) for c in contours]
     return out
 
 
@@ -547,7 +584,7 @@ def calc_contours_area(contours: np.ndarray):
     :return:
     '''
     cs = tr_my_to_cv_contours(contours)
-    areas = [cv2.contourArea(c) for c in cs]
+    areas = [cv2.contourArea(c.astype(np.float32)) for c in cs]
     return areas
 
 

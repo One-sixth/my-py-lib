@@ -1,6 +1,8 @@
+ 
 import numpy as np
 import geojson
 from my_py_lib.json_tool import open2
+from shapely.geometry import Polygon
 
 
 def save_line_string_geojson(conts, colors, names, file, auto_close_ring=True):
@@ -70,7 +72,7 @@ def load_line_string_geojson(file):
     return conts, colors, names
 
 
-def save_point_geojson(points, colors, names, file):
+def save_multi_point_geojson(points, colors, names, file):
     if colors is None:
         colors = [[255, 0, 0]] * len(points)
     else:
@@ -108,7 +110,7 @@ def save_point_geojson(points, colors, names, file):
     geojson.dump(fc, open2(file, 'w'), indent=2, ensure_ascii=False)
 
 
-def load_point_geojson(file):
+def load_multi_point_geojson(file):
     data = geojson.load(open2(file, 'r'))
 
     points, colors, names = [], [], []
@@ -140,6 +142,106 @@ def load_point_geojson(file):
         names.extend([cls_name]*len(coords))
 
     return points, colors, names
+
+
+def save_polygon_geojson(polys, colors, names, file):
+    if colors is None:
+        colors = [[255, 0, 0]] * len(polys)
+    else:
+        colors = [[255, 0, 0] if c is None else c for c in colors]
+
+    if names is None:
+        names = ['轮廓'] * len(polys)
+
+    fs = []
+
+    for poly, color, name in zip(polys, colors, names, strict=True):
+        assert isinstance(poly, Polygon)
+        outer = list(poly.exterior.coords)
+        inners = [list(inner.coords) for inner in poly.interiors]
+        p = geojson.Polygon(coordinates=[outer, *inners])
+        f = geojson.Feature(geometry=p, properties={
+            'objectType': 'annotation',
+            'color': color,
+            'classification': {
+                'name': name,
+                'color': color,
+            },
+            'isLocked': False,
+        })
+        fs.append(f)
+
+    fc = geojson.FeatureCollection(fs)
+    geojson.dump(fc, open2(file, 'w'), indent=2, ensure_ascii=False)
+
+
+def load_polygon_geojson(file):
+    data = geojson.load(open2(file, 'r'))
+
+    polys, colors, names = [], [], []
+
+    if isinstance(data, list):
+        features = data
+    else:
+        features = data.features
+
+    for item in features:
+        if item['geometry']['type'] == 'Polygon':
+            coords_list = item['geometry']['coordinates']
+            outer = None
+            inners = []
+            for coords_idx, coords in enumerate(coords_list):
+                if coords_idx == 0:
+                    outer = np.asarray(coords, np.float32)
+                else:
+                    inners.append(np.asarray(coords, np.float32))
+
+            if outer is None:
+                continue
+
+            poly = Polygon(outer, inners)
+
+            try:
+                cls_name = item.properties['classification']['name']
+            except KeyError:
+                cls_name = None
+            color = None
+            try:
+                color = item.properties['classification']['color']
+            except KeyError:
+                pass
+            try:
+                if color is None:
+                    color = item.properties['color']
+            except KeyError:
+                pass
+            polys.append(poly)
+            colors.append(color)
+            names.append(cls_name)
+
+    return polys, colors, names
+
+
+# class QupathGeojsonReader:
+#     def __init__(self, file=None):
+#         '''
+#         :param file:            读取文件路径
+#         '''
+#         # self.contour_color_regs = {}
+#         # self.box_color_regs = {}
+#         # self.arrow_color_regs = {}
+#         # self.ellipse_color_regs = {}
+#         # if file is not None:
+#         #     self.read(file)
+# 
+#     def read(self, file):
+#         pass
+# 
+#     def get_line_string(self):
+#         pass
+# 
+#     def get_point(self):
+#         pass
 
 
 if __name__ == '__main__':
