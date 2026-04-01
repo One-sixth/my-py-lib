@@ -53,16 +53,24 @@ def load_line_string_geojson(file):
         coords = np.asarray(coords, np.float32)
         coords = coords[:, ::-1]
         try:
-            cls_name = item.properties['classification']['name']
+            if isinstance(item.properties['classification'], str):
+                cls_name = item.properties['classification']
+            else:
+                cls_name = item.properties['classification']['name']
         except KeyError:
             cls_name = None
         color = None
+        color = None
         try:
-            color = item.properties['classification']['color']
+            if item.properties['classification'] == 'unknown':
+                color = (255, 0, 0)
+            else:
+                color = item.properties['classification']['color']
         except KeyError:
             pass
         try:
-            color = item.properties['color']
+            if color is None:
+                color = item.properties['color']
         except KeyError:
             pass
         conts.append(coords)
@@ -125,16 +133,24 @@ def load_multi_point_geojson(file):
         coords = np.asarray(coords, np.float32)
         coords = coords[:, ::-1]
         try:
-            cls_name = item.properties['classification']['name']
+            if isinstance(item.properties['classification'], str):
+                cls_name = item.properties['classification']
+            else:
+                cls_name = item.properties['classification']['name']
         except KeyError:
             cls_name = None
         color = None
+        color = None
         try:
-            color = item.properties['classification']['color']
+            if item.properties['classification'] == 'unknown':
+                color = (255, 0, 0)
+            else:
+                color = item.properties['classification']['color']
         except KeyError:
             pass
         try:
-            color = item.properties['color']
+            if color is None:
+                color = item.properties['color']
         except KeyError:
             pass
         points.extend(coords)
@@ -202,12 +218,18 @@ def load_polygon_geojson(file):
             poly = Polygon(outer, inners)
 
             try:
-                cls_name = item.properties['classification']['name']
+                if isinstance(item.properties['classification'], str):
+                    cls_name = item.properties['classification']
+                else:
+                    cls_name = item.properties['classification']['name']
             except KeyError:
                 cls_name = None
             color = None
             try:
-                color = item.properties['classification']['color']
+                if item.properties['classification'] == 'unknown':
+                    color = (255, 0, 0)
+                else:
+                    color = item.properties['classification']['color']
             except KeyError:
                 pass
             try:
