@@ -7,6 +7,7 @@ universal_batch_generator 将会输出 (1,4) (2,5) (3,6)
 
 
 def universal_batch_generator(g, batch_size):
+    '''将生成器的多个输出打包成多个批量，支持线程安全'''
     elems = next(g)
     assert isinstance(elems, tuple), '请务必确保生成器返回值为输出元组'
     batch_bulk = [[i] for i in elems]

@@ -64,11 +64,13 @@ TYPE_POINTSET = 'PointSet'  # 单个格式：[pt1_yx, pt2_yx, pt3_yx, ...]
 
 
 def color_str_to_tuple(t):
+    '''将颜色字符串转换为RGB元组'''
     c = tuple(int(c*255+0.5) for c in  plt_colors.to_rgb(t))
     return c
 
 
 def color_tuple_to_str(t):
+    '''将RGB元组转换为颜色字符串'''
     # t='(255,0,0)'
     t: str
     a = []
@@ -126,6 +128,7 @@ class AsapXmlReader:
             self.read(file)
 
     def read(self, file):
+        '''读取ASAP XML标注文件'''
         tree = etree.parse(file)
         for ann in tree.findall('//Annotations/Annotation'):
 
@@ -159,6 +162,7 @@ class AsapXmlReader:
             self.item_list.append(item)
 
     def _get_type(self, dtype):
+        '''按类型筛选标注项'''
         coords, colors, names, groups = [], [], [], []
         for item in self.item_list:
             if item['dtype'] == dtype:
@@ -169,18 +173,23 @@ class AsapXmlReader:
         return coords, colors, names, groups
 
     def get_contours(self):
+        '''获取所有轮廓标注'''
         return self._get_type(TYPE_CONTOUR)
     
     def get_boxes(self):
+        '''获取所有方框标注'''
         return self._get_type(TYPE_BOX)
 
     def get_points(self):
+        '''获取所有点标注'''
         return self._get_type(TYPE_POINT)
 
     def get_splines(self):
+        '''获取所有样条曲线标注'''
         return self._get_type(TYPE_SPLINE)
 
     def get_pointsets(self):
+        '''获取所有点集标注'''
         return self._get_type(TYPE_POINTSET)
 
 
@@ -197,6 +206,7 @@ class AsapXmlWriter:
         self.item_list = []
 
     def _add_items(self, coords, colors, dtypes, names=None, groups=None, is_closures=None):
+        '''内部方法：添加标注项到列表'''
         assert len(coords) == len(colors) == len(dtypes)
 
         if is_closures is None:
@@ -223,9 +233,11 @@ class AsapXmlWriter:
             self.item_list.append(item)
 
     def add_contours(self, contours, colors, names=None, groups=None, is_closures=None):
+        '''添加轮廓标注'''
         self._add_items(contours, colors, [TYPE_CONTOUR]*len(contours), names, groups, is_closures)
 
     def add_boxes(self, boxes, colors, names=None, groups=None):
+        '''添加方框标注'''
         boxes = np.asarray(boxes, np.float32)
         if self.use_box_y1x1y2x2:
             assert boxes.ndim == 2 and boxes.shape[1] == 4
@@ -234,17 +246,21 @@ class AsapXmlWriter:
         self._add_items(boxes, colors, [TYPE_BOX]*len(boxes), names, groups, [False]*len(boxes))
 
     def add_points(self, points, colors, names=None, groups=None):
+        '''添加点标注'''
         points = np.asarray(points, np.float32)
         assert points.ndim == 2 and points.shape[1] == 2
         self._add_items(points, colors, [TYPE_POINT]*len(points), names, groups, [False]*len(points))
 
     def add_splines(self, splines, colors, names=None, groups=None, is_closures=None):
+        '''添加样条曲线标注'''
         self._add_items(splines, colors, [TYPE_SPLINE]*len(splines), names, groups, is_closures)
 
     def add_pointsets(self, pointsets, colors, names=None, groups=None):
+        '''添加点集标注'''
         self._add_items(pointsets, colors, [TYPE_POINTSET]*len(pointsets), names, groups, [False]*len(pointsets))
 
     def write(self, file):
+        '''写入ASAP XML标注文件（未实现）'''
         raise NotImplemented
 
         # Annotations = etree.Element('Annotations', {'MicronsPerPixel': '0'})

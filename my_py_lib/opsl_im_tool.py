@@ -37,6 +37,7 @@ except (ModuleNotFoundError, ImportError):
 
 
 def get_level0_mpp(opsl_im: Union[opsl.OpenSlide, tisl.TiffSlide]):
+    """获取图像0级的MPP(微米每像素)值，返回(y, x)元组"""
     if isinstance(opsl_im, tisl.tiffslide.TiffSlide):
         prop_x, prop_y = tisl.PROPERTY_NAME_MPP_X, tisl.PROPERTY_NAME_MPP_Y
     elif isinstance(opsl_im, opsl.OpenSlide):

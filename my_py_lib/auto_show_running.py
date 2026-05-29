@@ -35,6 +35,7 @@ class AutoShowRunning:
         self._show_thread.start()
 
     def show_im(self, batch_im):
+        '''显示一批图像'''
         if self._swap_lock.acquire(blocking=True):
             self._im_list.clear()
             for i in range(min(self.show_num, len(batch_im))):
@@ -42,11 +43,13 @@ class AutoShowRunning:
             self._swap_lock.release()
 
     def destroy(self):
+        '''销毁显示窗口'''
         self._need_quit = True
         cv2.destroyWindow(self.title)
         cv2.waitKey(10)
 
     def _show_run(self):
+        '''显示运行线程'''
         while not self._need_quit:
             big_im = np.empty([*self.out_hw, 3], np.uint8)
             big_im[..., :] = self.pad_value

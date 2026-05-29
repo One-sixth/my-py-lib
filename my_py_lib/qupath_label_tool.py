@@ -6,6 +6,7 @@ from shapely.geometry import Polygon
 
 
 def save_line_string_geojson(conts, colors, names, file, auto_close_ring=True):
+    '''保存线串格式的GeoJSON文件'''
     if colors is None:
         colors = [[255, 0, 0]] * len(conts)
     else:
@@ -39,6 +40,7 @@ def save_line_string_geojson(conts, colors, names, file, auto_close_ring=True):
 
 
 def load_line_string_geojson(file):
+    '''加载线串格式的GeoJSON文件'''
     data = geojson.load(open2(file, 'r'))
 
     conts, colors, names = [], [], []
@@ -81,6 +83,7 @@ def load_line_string_geojson(file):
 
 
 def save_multi_point_geojson(points, colors, names, file):
+    '''保存多点格式的GeoJSON文件'''
     if colors is None:
         colors = [[255, 0, 0]] * len(points)
     else:
@@ -119,6 +122,7 @@ def save_multi_point_geojson(points, colors, names, file):
 
 
 def load_multi_point_geojson(file):
+    '''加载多点格式的GeoJSON文件'''
     data = geojson.load(open2(file, 'r'))
 
     points, colors, names = [], [], []
@@ -161,6 +165,7 @@ def load_multi_point_geojson(file):
 
 
 def save_polygon_geojson(polys, colors, names, file):
+    '''保存多边形格式的GeoJSON文件'''
     if colors is None:
         colors = [[255, 0, 0]] * len(polys)
     else:
@@ -192,6 +197,7 @@ def save_polygon_geojson(polys, colors, names, file):
 
 
 def load_polygon_geojson(file):
+    '''加载多边形格式的GeoJSON文件'''
     data = geojson.load(open2(file, 'r'))
 
     polys, colors, names = [], [], []

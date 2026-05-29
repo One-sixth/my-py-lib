@@ -17,6 +17,7 @@ import numpy as np
 
 
 def xywh2yxhw(coord_or_coords):
+    '''将xywh格式坐标转换为yxhw格式，同时适用于x1y1x2y2等'''
     coord_or_coords = np.asarray(coord_or_coords)
     yx = coord_or_coords[..., :2][..., ::-1]
     hw = coord_or_coords[..., 2:][..., ::-1]
@@ -32,6 +33,7 @@ y1x1hw_to_x1y1wh = xywh2yxhw
 
 
 def xy2yx(coord_or_coords):
+    '''将xy坐标格式转换为yx格式'''
     coord_or_coords = np.asarray(coord_or_coords)
     yx = coord_or_coords[..., ::-1]
     return yx

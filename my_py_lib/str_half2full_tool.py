@@ -155,6 +155,7 @@ _other_full2half_dict = dict(zip(_other_half2full_dict.values(), _other_half2ful
 
 
 def str_full2half(s: str, ignore_chars=None, ignore_ascii=False, ignore_jp=False, ignore_kr=False, ignore_other=False):
+    '''将全角字符转换为半角字符'''
     ignore_chars = set() if ignore_chars is None else set(ignore_chars)
 
     ns = []
@@ -188,6 +189,7 @@ def str_full2half(s: str, ignore_chars=None, ignore_ascii=False, ignore_jp=False
 
 
 def str_half2full(s: str, ignore_chars=None, ignore_ascii=False, ignore_jp=False, ignore_kr=False, ignore_other=False):
+    '''将半角字符转换为全角字符'''
     ignore_chars = set() if ignore_chars is None else set(ignore_chars)
 
     ns = []

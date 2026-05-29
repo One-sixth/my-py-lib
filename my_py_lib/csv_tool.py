@@ -20,6 +20,7 @@ def load_csv(csv_file, encoding='utf8'):
 
 
 def save_csv(rows, csv_file, encoding='utf8'):
+    '''将二维列表保存为CSV文件'''
     if isinstance(csv_file, str):
         csv_file = open(csv_file, 'w', encoding=encoding, newline='')
 

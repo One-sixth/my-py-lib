@@ -77,6 +77,7 @@ class ImageScopeXmlReader:
             self.read(file)
 
     def read(self, file):
+        '''读取ImageScope XML标注文件'''
         tree = etree.parse(file)
         for ann in tree.findall('./Annotation'):
             color_int = int(ann.attrib['LineColor'])
@@ -138,6 +139,7 @@ class ImageScopeXmlReader:
                     print('Unknow type {}. Will be skip.'.format(reg_type))
 
     def get_contours(self):
+        '''获取所有轮廓标注及颜色'''
         contours, colors = [], []
         for color in self.contour_color_regs:
             contours.extend(self.contour_color_regs[color])
@@ -145,6 +147,7 @@ class ImageScopeXmlReader:
         return contours, colors
 
     def get_boxes(self):
+        '''获取所有方框标注及颜色'''
         boxes, colors = [], []
         for color in self.box_color_regs:
             boxes.extend(self.box_color_regs[color])
@@ -152,6 +155,7 @@ class ImageScopeXmlReader:
         return boxes, colors
 
     def get_arrows(self):
+        '''获取所有箭头标注及颜色'''
         arrows, colors = [], []
         for color in self.arrow_color_regs:
             arrows.extend(self.arrow_color_regs[color])
@@ -159,6 +163,7 @@ class ImageScopeXmlReader:
         return arrows, colors
 
     def get_ellipses(self):
+        '''获取所有椭圆标注及颜色'''
         ellipses, colors = [], []
         for color in self.ellipse_color_regs:
             ellipses.extend(self.ellipse_color_regs[color])
@@ -184,6 +189,7 @@ class ImageScopeXmlWriter:
         self.ellipse_color_regs = {}
 
     def add_contours(self, contours, colors, is_closures=None):
+        '''添加轮廓标注'''
         assert is_closures is None or len(is_closures) == len(contours)
         assert len(contours) == len(colors)
 
@@ -205,6 +211,7 @@ class ImageScopeXmlWriter:
             self.contour_color_regs[color].append(con)
 
     def add_boxes(self, boxes, colors):
+        '''添加方框标注'''
         assert len(boxes) == len(colors)
 
         color_set = set(colors)
@@ -223,6 +230,7 @@ class ImageScopeXmlWriter:
             self.box_color_regs[color].append(box)
 
     def add_arrows(self, arrows, colors, auto_tail=True):
+        '''添加箭头标注'''
         assert len(arrows) == len(colors)
 
         color_set = set(colors)
@@ -240,6 +248,7 @@ class ImageScopeXmlWriter:
             self.arrow_color_regs[color].append(arrow)
 
     def add_ellipses(self, ellipses, colors):
+        '''添加椭圆标注'''
         assert len(ellipses) == len(colors)
 
         color_set = set(colors)
@@ -254,6 +263,7 @@ class ImageScopeXmlWriter:
             self.ellipse_color_regs[color].append(ellipse)
 
     def write(self, file):
+        '''写入ImageScope XML标注文件'''
         Annotations = etree.Element('Annotations', {'MicronsPerPixel': '0'})
         ann_id = 0
         for color_regs, type_id in zip([self.contour_color_regs, self.box_color_regs, self.arrow_color_regs, self.ellipse_color_regs],

@@ -163,11 +163,13 @@ def apply_affine_to_coords(coords_y1x1y2x2, M):
 
 
 def coords_clip(coords_y1x1y2x2, img_hw):
+    '''将坐标裁剪到图像范围内'''
     new_coords = np.clip(coords_y1x1y2x2, [0, 0, 0, 0], [*img_hw, *img_hw])
     return new_coords
 
 
 def random_affine_matrix(move_low_high=[-0.3, 0.3], angle_low_high=[-180, 180], scale_low_high=[0.7, 1.3], shear_low_high=[-20, 20], img_hw=[512, 512]):
+    '''生成随机仿射变换矩阵'''
     move_ratio_h = np.random.uniform(move_low_high[0], move_low_high[1])
     move_ratio_w = np.random.uniform(move_low_high[0], move_low_high[1])
     T = make_move([move_ratio_h, move_ratio_w], img_hw)

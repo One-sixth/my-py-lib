@@ -59,6 +59,7 @@ def tr_cv_to_my_contours(cv_contours):
 
 
 def tr_cv_to_polygon(cv_contours: list[np.ndarray]) -> list[Polygon]:
+    '''将OpenCV轮廓列表转换为Shapely Polygon列表'''
     poly_list = []
     for c in cv_contours:
         poly = Polygon(c[:, 0])
@@ -265,11 +266,13 @@ def shapely_ensure_polygon_list(ps) -> list[Polygon]:
 
 
 def shapely_drop_polygons_hole(polys: list[Polygon]):
+    '''批量去除Polygon的内孔，仅保留外轮廓'''
     out = [shapely_drop_polygon_hole(poly) for poly in polys]
     return out
 
 
 def shapely_drop_polygon_hole(poly: Polygon):
+    '''去除单个Polygon的内孔，仅保留外轮廓'''
     return shapely.Polygon(poly.exterior)
 
 
@@ -278,6 +281,7 @@ def shapely_find_contours(
         outer_simple:float=None, outer_area_threshold:float=None,
         inner_simple:float=None, inner_area_threshold:float=None,
     ) -> list[Polygon]:
+    '''从二值图中查找轮廓并返回Shapely Polygon列表'''
     '''
     生成多个带孔多边形
     :param im:
@@ -535,6 +539,7 @@ def shapely_resize_polygon(poly, scale_factor_hw=1.0, origin_yx=(0, 0)):
 
 
 def _resize_contour(contour, scale_factor_hw, origin_yx, dtype):
+    '''内部函数：缩放单个轮廓坐标'''
     return ((contour - origin_yx) * scale_factor_hw + origin_yx).astype(dtype)
 
 
@@ -765,6 +770,7 @@ def shapely_draw_contours(
     inner_color=None, inner_thickness=-1,
     copy=False
 ):
+    '''在图像上绘制Shapely Polygon轮廓，支持内外轮廓分别设色'''
     if copy:
         im = im.copy()
 

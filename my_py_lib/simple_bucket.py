@@ -9,11 +9,13 @@ import struct
 
 
 def _get_file_size(fp):
+    '''获取文件大小'''
     fp.seek(0, io.SEEK_END)
     return fp.tell()
 
 
 def _read_uint64(fp, pos):
+    '''从文件指定位置读取uint64值'''
     fp.seek(pos, io.SEEK_SET)
     buf = fp.read(8)
     assert len(buf) == 8
@@ -21,11 +23,13 @@ def _read_uint64(fp, pos):
 
 
 def _write_uint64(fp, data):
+    '''向文件写入uint64值'''
     n = fp.write(data.to_bytes(8, 'little', signed=False))
     assert n == 8
 
 
 def _read_buf(fp, pos, size):
+    '''从文件指定位置读取指定大小的缓冲区'''
     fp.seek(pos, io.SEEK_SET)
     buf = fp.read(size)
     assert len(buf) == size
@@ -33,6 +37,7 @@ def _read_buf(fp, pos, size):
 
 
 def _write_buf(fp, data):
+    '''向文件写入缓冲区数据'''
     n = fp.write(data)
     assert n == len(data)
 

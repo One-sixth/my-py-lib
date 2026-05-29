@@ -12,6 +12,7 @@ from hashlib import sha1
 
 
 def sha1_check(fp, sha1_code):
+    '''检查文件SHA1值是否匹配'''
     f = open(fp, 'rb')
     sha1_obj = sha1(mmap.mmap(f.fileno(), os.path.getsize(fp), access=mmap.ACCESS_READ))
     f.close()

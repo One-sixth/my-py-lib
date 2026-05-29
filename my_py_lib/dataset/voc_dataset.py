@@ -15,6 +15,7 @@ else:
 
 
 def _xml_extractor(xml_file):
+    '''解析VOC格式XML标注文件，提取文件名、对象和图像尺寸信息'''
     dom_tree = parse(xml_file)
     collection = dom_tree.documentElement
     file_name_xml = collection.getElementsByTagName('filename')[0]

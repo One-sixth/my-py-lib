@@ -4,22 +4,26 @@ import math
 
 
 def list_multi_get_with_ids(self: list, ids: Iterable):
+    '''根据索引列表批量获取元素'''
     return [self[i] for i in ids]
 
 
 def list_multi_get_with_bool(self: list, bools: Iterable):
+    '''根据布尔掩码批量获取元素'''
     assert len(self) == len(bools)
     a = [self[i] for i, b in enumerate(bools) if b]
     return a
 
 
 def list_multi_set_with_ids(self: list, ids: Iterable, items: Iterable):
+    '''根据索引列表批量设置元素'''
     assert len(ids) == len(items)
     for _id, item in zip(ids, items):
         self[_id] = item
 
 
 def list_multi_set_with_bool(self: list, bools: Iterable, items: Iterable):
+    '''根据布尔掩码批量设置元素'''
     assert len(self) == len(bools)
     wait_set_ids = []
     for i, b in enumerate(bools):
@@ -31,14 +35,17 @@ def list_multi_set_with_bool(self: list, bools: Iterable, items: Iterable):
 
 
 def int_list(self: Iterable):
+    '''将可迭代对象转换为整数列表'''
     return [int(i) for i in self]
 
 
 def float_list(self: Iterable):
+    '''将可迭代对象转换为浮点数列表'''
     return [float(i) for i in self]
 
 
 def list_split_by_size(self: Iterable, size: int):
+    '''按固定大小分割列表'''
     self = list(self)
     g = []
     i = 0
@@ -56,6 +63,7 @@ def list_split_by_size(self: Iterable, size: int):
 
 
 def list_split_by_group(self: Iterable, n_group: int):
+    '''按组数顺序分割列表'''
     # 顺序分组
     assert n_group > 0
     self = list(self)
@@ -72,6 +80,7 @@ def list_split_by_group(self: Iterable, n_group: int):
 
 
 def list_split_by_cross_group(self: Iterable, n_group: int):
+    '''按组数交错分割列表'''
     # 交错分组
     assert n_group > 0
     g = [[] for _ in range(n_group)]
@@ -81,6 +90,7 @@ def list_split_by_cross_group(self: Iterable, n_group: int):
 
 
 def list_group_by_classes(self: Iterable, classes: Iterable):
+    '''根据类别分组列表元素'''
     cls_uq = list(set(classes))
     d = {}
     for c in cls_uq:
@@ -93,6 +103,7 @@ def list_group_by_classes(self: Iterable, classes: Iterable):
 
 
 def list_bools_to_ids(bools):
+    '''将布尔列表转换为索引列表'''
     ids = []
     for i, b in enumerate(bools):
         if b:
@@ -101,6 +112,7 @@ def list_bools_to_ids(bools):
 
 
 def list_del_items_with_ids(self: list, ids: Iterable, copy=False):
+    '''根据索引列表删除元素'''
     if copy:
         self = self.copy()
     for i in sorted(ids, reverse=True):
@@ -109,6 +121,7 @@ def list_del_items_with_ids(self: list, ids: Iterable, copy=False):
 
 
 def list_del_items_with_bools(self: list, bools: Iterable, copy=False):
+    '''根据布尔掩码删除元素'''
     assert len(self) == len(bools)
     ids = list_bools_to_ids(bools)
     list_del_items_with_ids(self, ids, copy)
@@ -116,6 +129,7 @@ def list_del_items_with_bools(self: list, bools: Iterable, copy=False):
 
 
 def list_pop_items_with_ids(self: list, ids: Iterable):
+    '''根据索引列表弹出元素'''
     items = []
     for i in ids:
         items.append(self[i])
@@ -125,6 +139,7 @@ def list_pop_items_with_ids(self: list, ids: Iterable):
 
 
 def list_pop_items_with_bools(self: list, bools: Iterable):
+    '''根据布尔掩码弹出元素'''
     assert len(self) == len(bools)
     ids = list_bools_to_ids(bools)
     items = list_pop_items_with_ids(self, ids)
@@ -132,6 +147,7 @@ def list_pop_items_with_bools(self: list, bools: Iterable):
 
 
 def list_join(self: list, items: list[list,...]):
+    '''用分隔符列表连接多个列表'''
     self = list(self)
     items = list(items)
     if len(items) == 0:
@@ -145,6 +161,7 @@ def list_join(self: list, items: list[list,...]):
 
 
 def list_fill(self: list, value, copy=False):
+    '''用指定值填充列表'''
     if copy:
         self = self.copy()
     for i in range(len(self)):
@@ -153,6 +170,7 @@ def list_fill(self: list, value, copy=False):
 
 
 def list_where(self: list, value=None):
+    '''查找列表中满足条件的元素索引'''
     ids = []
     if value is None:
         for i, v in enumerate(self):

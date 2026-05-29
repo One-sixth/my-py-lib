@@ -54,6 +54,7 @@ class ImageOverScanWrapper:
     #     return im3
 
     def get(self, yx_start, yx_end, pad_value: Union[float, int, Iterable]=0):
+        '''获取指定区域的图像，超出边界部分用pad_value填充'''
         assert len(yx_start) == len(yx_end) == 2, 'Error. Wrong parameters yx_start or yx_parameters'
         assert yx_end[0] > yx_start[0] and yx_end[1] > yx_start[1], 'Error. Not allow get image with size is 0'
         im = self.im
@@ -79,6 +80,7 @@ class ImageOverScanWrapper:
         return out_im
 
     def set(self, yx_start, yx_end, new_im):
+        '''将新图像写入指定区域，超出边界部分自动裁剪'''
         im = self.im
         assert len(yx_start) == len(yx_end) == 2
         assert yx_end[0] > yx_start[0] and yx_end[1] > yx_start[1]
@@ -105,24 +107,30 @@ class ImageOverScanWrapper:
 
     @property
     def data(self):
+        '''返回原始图像数据'''
         return self.im
 
     @property
     def shape(self):
+        '''返回图像形状'''
         return self.im.shape
 
     @property
     def ndim(self):
+        '''返回图像维度数'''
         return self.im.ndim
 
     @property
     def size(self):
+        '''返回图像元素总数'''
         return self.im.size
     
     @property
     def dtype(self):
+        '''返回图像数据类型'''
         return self.im.dtype
 
     @property
     def itemsize(self):
+        '''返回单个元素的字节大小'''
         return self.im.itemsize

@@ -10,12 +10,14 @@ from contextlib import contextmanager
 
 
 def range_mapping(x, x_min, x_max, y_min, y_max):
+    '''将值从一个范围映射到另一个范围'''
     # 值域映射
     y = (x - x_min) / (x_max - x_min) * (y_max - y_min) + y_min
     return y
 
 
 def my_fit(sess, x, y, loss_op, optim_op, acc_op, epoch, batch_size, x_train, y_train, x_test, y_test, print_freq=5, eval_train=True):
+    '''TensorFlow训练循环，包含验证和日志输出'''
     import time
     # epoch = 500
     train_x_data = x_train
@@ -89,6 +91,7 @@ def my_fit(sess, x, y, loss_op, optim_op, acc_op, epoch, batch_size, x_train, y_
 
 
 def get_auto_grow_session():
+    '''获取自动增长GPU内存的TensorFlow Session'''
     import tensorflow as tf
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -97,6 +100,7 @@ def get_auto_grow_session():
 
 
 def enable_auto_grow_eager_execution():
+    '''启用自动增长GPU内存的TensorFlow Eager Execution'''
     import tensorflow as tf
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -105,6 +109,7 @@ def enable_auto_grow_eager_execution():
 
 
 def tf_force_use_cpu():
+    '''强制TensorFlow使用CPU，禁用GPU加速'''
     #关闭gpu加速
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = ''

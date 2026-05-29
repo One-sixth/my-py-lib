@@ -40,6 +40,7 @@ class ImageFreeGaussFusionWrapper:
 
     @staticmethod
     def build_zones(coords, zone_size):
+        '''将坐标按分区大小分组，构建分区索引'''
         zones = {}
         for coord_i, coord in enumerate(coords):
             q_coord = np.int32(coord // zone_size)
@@ -49,6 +50,7 @@ class ImageFreeGaussFusionWrapper:
         return zones
 
     def get_relation_patch_ids_by_zones(self, bbox):
+        '''根据包围框获取相关的图块ID列表'''
         bbox = np.int32(bbox)
         q_bbox = np.int32(bbox // self.zone_size)
 
@@ -76,12 +78,14 @@ class ImageFreeGaussFusionWrapper:
 
     @lru_cache(10)
     def make_gauss_map(self, hw):
+        '''生成居中高斯渐变权重图'''
         im = np.zeros(hw, dtype=np.float32)
         center = [hw[0] // 2, hw[1] // 2]
         im = draw_tool.draw_gradient_circle(im, center, int(center[0] * 1.4), 1, 0.01, 'sqrt')
         return im
 
     def check_bbox_is_cross(self, bbox, coords):
+        '''检查包围框是否与坐标区域相交，返回布尔数组'''
         inter_y1 = np.maximum(bbox[..., 0], coords[..., 0])
         inter_x1 = np.maximum(bbox[..., 1], coords[..., 1])
         inter_y2 = np.minimum(bbox[..., 2], coords[..., 2])
